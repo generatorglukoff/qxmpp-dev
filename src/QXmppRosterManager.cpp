@@ -145,7 +145,49 @@ void QXmppRosterManager::removeRosterEntry(const QString &bareJid)
     client()->sendPacket(iq);
 }
 
-/// Cancels subscription previously granted to the given contact.
+/// Adds a new entry to the roster without sending any subscription requests.
+///
+/// The server will initiate a roster push, as with removeRosterEntry(), causing
+/// the rosterChanged() signal to be emitted for the newly given roster entry.
+///
+/// \param bareJid
+/// \param name Optional name of the entry to save it under.
+/// \param message Optional message to send to the entry.
+/// \param groups Groups that this entry belongs to.
+///
+/// \todo Use the message parameter.
+
+void QXmppRosterManager::addRosterEntry(const QString &bareJid, const QString &name,
+                                        const QString &message, const QSet<QString> &groups)
+{
+    QXmppRosterIq::Item item;
+    item.setBareJid(bareJid);
+    item.setName(name);
+    item.setGroups(groups);
+    item.setSubscriptionType(QXmppRosterIq::Item::NotSet);
+
+    QXmppRosterIq iq;
+    iq.setType(QXmppIq::Set);
+    iq.addItem(item);
+    client()->sendPacket(iq);
+}
+
+/// Grants subscription to the given contact.
+///
+/// \param bareJid
+/// \param reason
+///
+/// \todo Actually use the reason parameter.
+
+void QXmppRosterManager::grantSubscription(const QString &bareJid, const QString &reason)
+{
+    QXmppPresence presence(QXmppPresence::Subscribed);
+    presence.setTo(bareJid);
+    client()->sendPacket(presence);
+}
+
+/// Cancels subscription previously granted to the given contact or
+/// denies the request for subscription.
 ///
 /// \param bareJid
 /// \param reason
@@ -155,6 +197,20 @@ void QXmppRosterManager::removeRosterEntry(const QString &bareJid)
 void QXmppRosterManager::cancelSubscription(const QString &bareJid, const QString &reason)
 {
     QXmppPresence presence(QXmppPresence::Unsubscribed);
+    presence.setTo(bareJid);
+    client()->sendPacket(presence);
+}
+
+/// Requests the subscription to the contact's presence.
+///
+/// \param bareJid
+/// \param reason
+///
+/// \todo Actually use the reason parameter.
+
+void QXmppRosterManager::subscribe(const QString &bareJid, const QString &reason)
+{
+    QXmppPresence presence(QXmppPresence::Subscribe);
     presence.setTo(bareJid);
     client()->sendPacket(presence);
 }
