@@ -34,3 +34,8 @@ symbian {
     QXMPP_LIBRARY_FILE = $${QXMPP_LIBRARY_DIR}/lib$${QXMPP_LIBRARY_NAME}.a
 }
 
+unix {
+	isEmpty(PREFIX) {
+		PREFIX = /usr/local
+	}
+}

@@ -165,9 +165,10 @@ SOURCES += \
 # pkg-config support
 CONFIG += create_pc create_prl no_install_prl
 QMAKE_PKGCONFIG_DESTDIR = $$QXMPP_LIBRARY_DIR/pkgconfig
+#QMAKE_PKGCONFIG_PREFIX = /usr
 
 # Installation
 headers.files = $$INSTALL_HEADERS
-headers.path = $$[QT_INSTALL_PREFIX]/include/qxmpp
-target.path = $$[QT_INSTALL_PREFIX]/lib
+headers.path = $$PREFIX/include/qxmpp
+target.path = $$PREFIX/lib
 INSTALLS += headers target
