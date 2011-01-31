@@ -163,8 +163,21 @@ void QXmppRosterManager::rosterIqReceived(const QXmppRosterIq& rosterIq)
             for (int i = 0; i < items.count(); i++)
             {
                 QString bareJid = items.at(i).bareJid();
-                m_entries[bareJid] = items.at(i);
-                emit rosterChanged(bareJid);
+                // don't emit the rosterChanged() signal if the item is
+                // actually removed from the roster
+                if (items.at(i).subscriptionType() == QXmppRosterIq::Item::Remove)
+                {
+                    // emit the signal only if we had the item before - in
+                    // this case the remove() method would return a non-zero
+                    // value
+                    if (m_entries.remove(bareJid))
+                        emit itemRemoved(bareJid);
+                }
+                else
+                {
+                    m_entries[bareJid] = items.at(i);
+                    emit rosterChanged(bareJid);
+                }
             }
         }
         break;
