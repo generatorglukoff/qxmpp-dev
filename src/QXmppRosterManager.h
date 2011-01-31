@@ -71,6 +71,9 @@ public:
     QStringList getRosterBareJids() const;
     QXmppRosterIq::Item getRosterEntry(const QString& bareJid) const;
     void removeRosterEntry(const QString &bareJid);
+
+    void cancelSubscription(const QString &bareJid, const QString &reason);
+    void unsubscribe(const QString &bareJid, const QString &reason);
     
     QStringList getResources(const QString& bareJid) const;
     QMap<QString, QXmppPresence> getAllPresencesForBareJid(

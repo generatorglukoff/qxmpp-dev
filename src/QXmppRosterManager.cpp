@@ -145,6 +145,34 @@ void QXmppRosterManager::removeRosterEntry(const QString &bareJid)
     client()->sendPacket(iq);
 }
 
+/// Cancels subscription previously granted to the given contact.
+///
+/// \param bareJid
+/// \param reason
+///
+/// \todo Actually use the reason parameter.
+
+void QXmppRosterManager::cancelSubscription(const QString &bareJid, const QString &reason)
+{
+    QXmppPresence presence(QXmppPresence::Unsubscribed);
+    presence.setTo(bareJid);
+    client()->sendPacket(presence);
+}
+
+/// Unsubscribes from the contact's presences.
+///
+/// \param bareJid
+/// \param reason
+///
+/// \todo Actually use the reason parameter.
+
+void QXmppRosterManager::unsubscribe(const QString &bareJid, const QString &reason)
+{
+    QXmppPresence presence(QXmppPresence::Unsubscribe);
+    presence.setTo(bareJid);
+    client()->sendPacket(presence);
+}
+
 void QXmppRosterManager::rosterIqReceived(const QXmppRosterIq& rosterIq)
 {
     bool isInitial = (m_rosterReqId == rosterIq.id());
