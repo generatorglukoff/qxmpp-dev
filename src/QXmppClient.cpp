@@ -476,6 +476,21 @@ void QXmppClient::setClientPresence(const QXmppPresence& presence)
     }
 }
 
+/// Adds the information about our client to the passed presence packet.
+/// Without this, the packet doesn't contain any information about
+/// client node string, capabilities, etc.
+///
+/// You generally should not need to call this function unless you craft
+/// the presence packets yourself and send them with the sendPacket()
+/// method.
+///
+/// \param presence
+
+void QXmppClient::addProperCapability(QXmppPresence &presence)
+{
+    d->addProperCapability(presence);
+}
+
 /// Function to get reconnection manager. By default there exists a reconnection
 /// manager. See QXmppReconnectionManager for more details of the reconnection
 /// mechanism.

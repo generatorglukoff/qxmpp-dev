@@ -89,6 +89,7 @@ bool QXmppMucManager::joinRoom(const QString &roomJid, const QString &nickName, 
     QXmppPresence packet;
     packet.setTo(roomJid + "/" + nickName);
     packet.setType(QXmppPresence::Available);
+    client()->addProperCapability(packet);
     QXmppElement x;
     x.setTagName("x");
     x.setAttribute("xmlns", ns_muc);
