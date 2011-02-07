@@ -366,6 +366,19 @@ void QXmppClient::connectToServer(const QString& host,
 
 bool QXmppClient::sendPacket(const QXmppPacket& packet)
 {
+    // Try to cast the packet to Presence packet, and if that succeeds, call the
+    // addProperCapability() on it and send the result, otherwise, if the cast would
+    // fail, the usual sendPacket() would be called.
+    try
+    {
+        // Construct a copy, cause the source parameter is const ref.
+        QXmppPresence pres = dynamic_cast<const QXmppPresence&>(packet);
+        addProperCapability(pres);
+        return d->stream->sendPacket(pres);
+    }
+    catch (...)
+    {
+    }
     return d->stream->sendPacket(packet);
 }
 
