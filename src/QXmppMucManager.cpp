@@ -86,7 +86,7 @@ bool QXmppMucManager::handleStanza(const QDomElement &element)
 
 bool QXmppMucManager::joinRoom(const QString &roomJid, const QString &nickName, const QString &password)
 {
-    QXmppPresence packet;
+    QXmppPresence packet = client()->clientPresence();
     packet.setTo(roomJid + "/" + nickName);
     packet.setType(QXmppPresence::Available);
     QXmppElement x;
