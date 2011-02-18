@@ -304,6 +304,24 @@ void QXmppMucManager::presenceReceived(const QXmppPresence &presence)
     else
         return;
 
+    foreach (const QXmppElement &extension, presence.extensions())
+    {
+       if (!(extension.tagName() == "x" && extension.attribute("xmlns") == ns_muc_user))
+           continue;
+
+       QXmppElement status = extension.firstChildElement("status");
+       while (!status.isNull())
+       {
+           if (status.attribute("code").toInt() == 303)
+           {
+               const QString &newNick = extension.firstChildElement("item").attribute("nick");
+               emit roomParticipantNickChanged(bareJid, resource, newNick);
+               break;
+           }
+           status = status.nextSiblingElement("status");
+       }
+    }
+
     emit roomParticipantChanged(bareJid, resource);
 }
 

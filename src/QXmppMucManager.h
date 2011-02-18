@@ -88,6 +88,15 @@ signals:
     /// \sa roomParticipants()
     void roomParticipantChanged(const QString &roomJid, const QString &nickName);
 
+    /// This signal is emitted when a room participant changes his nickname.
+    ///
+    /// Please note that roomParticipantChanged() would be emitted nevertheless,
+    /// both to signal about the unavailability of the participant under oldNick
+    /// and about the availability under newNick. However, this signal would be
+    /// emitted before both of them, so you may keep track of nick changes and
+    /// react to roomParticipantChanged() accordingly.
+    void roomParticipantNickChanged(const QString &roomJid, const QString &oldNick, const QString &newNick);
+
 protected:
     /// \cond
     void setClient(QXmppClient* client);
