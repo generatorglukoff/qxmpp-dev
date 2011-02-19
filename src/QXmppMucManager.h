@@ -68,6 +68,10 @@ public:
 
     QMap<QString, QXmppPresence> roomParticipants(const QString& bareJid) const;
 
+    QXmppMucAdminIq::Item::Affiliation getAffiliation(const QString &roomJid, const QString &nick) const;
+    QXmppMucAdminIq::Item::Role getRole(const QString &roomJid, const QString &nick) const;
+    QString getRealJid(const QString &roomJid, const QString &nick) const;
+
     /// \cond
     QStringList discoveryFeatures() const;
     bool handleStanza(const QDomElement &element);
@@ -97,6 +101,25 @@ signals:
     /// react to roomParticipantChanged() accordingly.
     void roomParticipantNickChanged(const QString &roomJid, const QString &oldNick, const QString &newNick);
 
+    /// This signal is emitted when a room participant's JID changes.
+    void roomParticipantJidChanged(const QString &roomJid, const QString &nick, const QString &newJid);
+
+    /// This signal is emitted when a room participant's permissions change.
+    ///
+    /// Please note that this also includes the events of kicking and banning,
+    /// in this case newRole or newAff change to NoRole and OutcastAffiliation
+    /// accordingly.
+    void roomParticipantPermsChanged(const QString &roomJid, const QString &nick,
+                                     QXmppMucAdminIq::Item::Affiliation newAff,
+                                     QXmppMucAdminIq::Item::Role newRole,
+                                     const QString &reason);
+
+    /// This signal is emitted when a room participant's presence changes.
+    ///
+    /// This signal is emitted after roomParticipantJidChanged(), if any, but before
+    /// roomParticipantPermsChanged() and roomParticipandChanged().
+    void roomPresenceChanged(const QString &roomJid, const QString &nick, const QXmppPresence &presence);
+
 protected:
     /// \cond
     void setClient(QXmppClient* client);
@@ -111,6 +134,9 @@ private slots:
 private:
     QMap<QString, QString> m_nickNames;
     QMap<QString, QMap<QString, QXmppPresence> > m_participants;
+    QMap<QString, QMap<QString, QXmppMucAdminIq::Item::Affiliation> > m_affiliations;
+    QMap<QString, QMap<QString, QXmppMucAdminIq::Item::Role> > m_roles;
+    QMap<QString, QMap<QString, QString> > m_realJids;
 };
 
 #endif
