@@ -355,6 +355,7 @@ void QXmppMucManager::presenceReceived(const QXmppPresence &presence)
     QString realJid;
     QString reason;
 
+    bool beenKicked = false;
     foreach (const QXmppElement &extension, presence.extensions())
     {
         if (!(extension.tagName() == "x" && extension.attribute("xmlns") == ns_muc_user))
@@ -364,33 +365,42 @@ void QXmppMucManager::presenceReceived(const QXmppPresence &presence)
         QXmppElement status = extension.firstChildElement("status");
         while (!status.isNull())
         {
-            if (status.attribute("code").toInt() == 303)
+            const int code = status.attribute("code").toInt();
+            if (code == 303)
             {
                 newNick = itemElem.attribute("nick");
                 emit roomParticipantNickChanged(bareJid, resource, newNick);
-                break;
+            }
+            else if (code == 307)
+            {
+                beenKicked = true;
+                newRole = QXmppMucAdminIq::Item::NoRole;
+            }
+            else if (code == 301)
+            {
+                beenKicked = true;
+                newAffiliation = QXmppMucAdminIq::Item::OutcastAffiliation;
             }
             status = status.nextSiblingElement("status");
         }
 
-        newAffiliation = QXmppMucAdminIq::Item::affiliationFromString(itemElem.attribute("affiliation"));
-        newRole = QXmppMucAdminIq::Item::roleFromString(itemElem.attribute("role"));
-        realJid = itemElem.attribute("jid");
+        if (!newNick.isEmpty() || presence.type() != QXmppPresence::Unavailable)
+        {
+            newAffiliation = QXmppMucAdminIq::Item::affiliationFromString(itemElem.attribute("affiliation"));
+            newRole = QXmppMucAdminIq::Item::roleFromString(itemElem.attribute("role"));
+            realJid = itemElem.attribute("jid");
+        }
         reason = itemElem.firstChildElement("reason").value();
     }
 
     bool rightsChanged = false;
-    bool beenKicked = false;
     if (presence.type() == QXmppPresence::Unavailable)
     {
-        // If new affiliation is outcast or role is norole, then user has been
-        // banned or kicked, otherwise check if the user left or renamed self.
         // If newNick is empty, then user really left the room, otherwise he just
         // changed his nickname, so copy data from old nick into new one.
         if (newAffiliation == QXmppMucAdminIq::Item::OutcastAffiliation ||
             newRole == QXmppMucAdminIq::Item::NoRole)
         {
-            beenKicked = true;
             rightsChanged = true;
             m_realJids[bareJid].remove(resource);
             m_affiliations[bareJid].remove(resource);
@@ -408,7 +418,6 @@ void QXmppMucManager::presenceReceived(const QXmppPresence &presence)
             m_affiliations[bareJid][newNick] = m_affiliations[bareJid].take(resource);
             m_roles[bareJid][newNick] = m_roles[bareJid].take(resource);
         }
-        qDebug () << beenKicked << rightsChanged;
     }
     else
     {
