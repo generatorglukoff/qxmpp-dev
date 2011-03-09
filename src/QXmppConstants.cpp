@@ -70,3 +70,5 @@ const char *ns_jingle_rtp_audio = "urn:xmpp:jingle:apps:rtp:audio";
 const char *ns_jingle_rtp_video = "urn:xmpp:jingle:apps:rtp:video";
 
 const char *ns_entity_time = "urn:xmpp:time";
+
+const char *ns_activity = "http://jabber.org/protocol/activity";

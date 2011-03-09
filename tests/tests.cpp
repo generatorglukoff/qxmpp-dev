@@ -46,6 +46,7 @@
 #include "QXmppVersionIq.h"
 #include "QXmppGlobal.h"
 #include "QXmppEntityTimeIq.h"
+#include "QXmppActivityIq.h"
 #include "tests.h"
 
 QString getImageType(const QByteArray &contents);
@@ -135,7 +136,7 @@ void TestUtils::testMime()
 
 void TestUtils::testLibVersion()
 {
-    QCOMPARE(QXmppVersion(), QString("0.2.92"));
+    QCOMPARE(QXmppVersion(), QString("0.2.91"));
 }
 
 void TestUtils::testTimezoneOffset()
@@ -1205,6 +1206,89 @@ void TestXmlRpc::testResponseFault()
     serializePacket(iq, xml);
 }
 
+void TestUserActivity::testCommon()
+{
+    const QByteArray xml(
+        "<activity xmlns=\"http://jabber.org/protocol/activity\">"
+        "<relaxing>"
+        "<partying/>"
+        "</relaxing>"
+        // "<text xml:lang=\"en\">My nurse&apos;s birthday!</text>"
+        "<text xml:lang=\"en\">My nurse's birthday!</text>"
+        "</activity>");
+
+    QXmppActivityIq iq;
+    parsePacket(iq, xml);
+
+    QCOMPARE(iq.isStop(), false);
+    QCOMPARE(iq.activityGeneral(), QXmppActivityIq::Relaxing);
+    QCOMPARE(iq.activitySpecific(), QXmppActivityIq::Partying);
+    QCOMPARE(iq.text(), QString("My nurse's birthday!"));
+    QCOMPARE(iq.lang(), QString("en"));
+
+    serializePacket(iq, xml);
+}
+
+void TestUserActivity::testSpecificNamespaced()
+{
+    const QByteArray xml(
+        "<activity xmlns=\"http://jabber.org/protocol/activity\">"
+        "<relaxing>"
+        "<tanning xmlns=\"http://www.ilovetanning.info\"/>"
+        "</relaxing>"
+        "</activity>");
+
+    QXmppActivityIq iq;
+    parsePacket(iq, xml);
+
+    QCOMPARE(iq.isStop(), false);
+    QCOMPARE(iq.isAdditionalSpecific(), true);
+    QCOMPARE(iq.activityGeneral(), QXmppActivityIq::Relaxing);
+    QCOMPARE(iq.activitySpecific(), QXmppActivityIq::SpecificEmpty);
+    QCOMPARE(iq.additionalSpecific(), QString("tanning"));
+    QCOMPARE(iq.additionalSpecificNS(), QString("http://www.ilovetanning.info"));
+
+    serializePacket(iq, xml);
+}
+
+void TestUserActivity::testDetailed()
+{
+    const QByteArray xml(
+        "<activity xmlns=\"http://jabber.org/protocol/activity\">"
+        "<inactive>"
+        "<sleeping>"
+        "<hibernating xmlns=\"http://www.ursus.info/states\"/>"
+        "</sleeping>"
+        "</inactive>"
+        "</activity>");
+
+    QXmppActivityIq iq;
+    parsePacket(iq, xml);
+
+    QCOMPARE(iq.isStop(), false);
+    QCOMPARE(iq.isAdditionalSpecific(), false);
+    QCOMPARE(iq.isDetailed(), true);
+    QCOMPARE(iq.activityGeneral(), QXmppActivityIq::Inactive);
+    QCOMPARE(iq.activitySpecific(), QXmppActivityIq::Sleeping);
+    QCOMPARE(iq.activityDetailed(), QString("hibernating"));
+    QCOMPARE(iq.activityDetailedNS(), QString("http://www.ursus.info/states"));
+
+    serializePacket(iq, xml);
+}
+
+void TestUserActivity::testStopActivity()
+{
+    const QByteArray xml(
+        "<activity xmlns=\"http://jabber.org/protocol/activity\"/>");
+
+    QXmppActivityIq iq;
+    parsePacket(iq, xml);
+
+    QCOMPARE(iq.isStop(), true);
+
+    serializePacket(iq, xml);
+}
+
 int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
@@ -1229,6 +1313,9 @@ int main(int argc, char *argv[])
 
     TestXmlRpc testXmlRpc;
     errors += QTest::qExec(&testXmlRpc);
+
+    TestUserActivity testUserActivity;
+    errors += QTest::qExec(&testUserActivity);
 
     if (errors)
     {

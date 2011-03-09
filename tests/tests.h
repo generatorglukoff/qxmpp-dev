@@ -124,3 +124,14 @@ private slots:
     void testResponse();
     void testResponseFault();
 };
+
+class TestUserActivity : public QObject
+{
+    Q_OBJECT
+
+private slots:
+    void testCommon();
+    void testSpecificNamespaced();
+    void testDetailed();
+    void testStopActivity();
+};
