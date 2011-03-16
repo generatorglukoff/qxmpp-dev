@@ -34,7 +34,7 @@
 class QXmppActivityIq : public QXmppIq
 {
 public:
-
+    /// This enum is used to describe a general activity  type.
     enum General {
         GeneralEmpty = -1,
         DoingChores,
@@ -49,7 +49,7 @@ public:
         Traveling,
         Working
     };
-
+    /// This enum is used to describe a specific activity  type.
     enum Specific {
         SpecificEmpty = -1,
         BuyingGroceries,
@@ -118,7 +118,7 @@ public:
         InAMeeting,
         Studying,
         Writing,
-        Other
+        Other // any other activity (without further specification) not defined herein
     };
 
     QXmppActivityIq();
