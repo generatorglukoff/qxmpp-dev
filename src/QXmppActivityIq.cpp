@@ -26,6 +26,7 @@
 #include "QXmppConstants.h"
 #include "QXmppActivityIq.h"
 
+/// String representations of general activities
 static const char* activity_general[] = {
     "doing_chores",
     "drinking",
@@ -40,6 +41,7 @@ static const char* activity_general[] = {
     "working"
 };
 
+/// String representations of specific activities
 static const char* activity_specific[] = {
     "buying_groceries",
     "cleaning",
@@ -125,101 +127,154 @@ QXmppActivityIq::QXmppActivityIq() :
 {
 }
 
+/// Returns the general tag of the Activity item.
+///
 QXmppActivityIq::General QXmppActivityIq::activityGeneral() const
 {
     return m_actgen;
 }
 
+/// Sets the general tag of the Activity item.
+///
+/// \param general
 void QXmppActivityIq::setActivityGeneral(QXmppActivityIq::General general)
 {
     m_actgen = general;
 }
 
+/// Returns the specific tag of the Activity item.
+///
 QXmppActivityIq::Specific QXmppActivityIq::activitySpecific() const
 {
     return m_actspec;
 }
 
+/// Sets the specific tag of the Activity item.
+///
+/// \param specific
 void QXmppActivityIq::setActivitySpecific(QXmppActivityIq::Specific specific)
 {
     m_actspec = specific;
 }
 
+/// Returns the additional specific (not hardcoded by XEP) tag of the
+/// Activity item, if there is any.
+///
 QString QXmppActivityIq::additionalSpecific() const
 {
     return m_specadd;
 }
 
+/// Sets the additional specific (not hardcoded by XEP) tag of the
+/// Activity item.
+///
+/// \param specific
 void QXmppActivityIq::setAdditionalSpecific(const QString& addspec)
 {
     m_specadd = addspec;
 }
 
+/// Returns the namespace of the additional specific tag.
+///
 QString QXmppActivityIq::additionalSpecificNS() const
 {
     return m_specaddns;
 }
 
+/// Sets the namespace of the additional specific tag.
+///
+/// \param addspecns
 void QXmppActivityIq::setAdditionalSpecificNS(const QString& addspecns)
 {
     m_specaddns = addspecns;
 }
 
+/// Returns the detailed activity tag if there is any.
+///
 QString QXmppActivityIq::activityDetailed() const
 {
     return m_detailed;
 }
 
+/// Sets the detailed activity tag.
+///
+/// \param detailed
 void QXmppActivityIq::setActivityDetailed(const QString& detailed)
 {
     m_detailed = detailed;
 }
 
+/// Returns the detailed activity's namespace.
+///
 QString QXmppActivityIq::activityDetailedNS() const
 {
     return m_detailedns;
 }
 
+/// Sets the detailed activity's namespace.
+///
+/// \param detailedns
 void QXmppActivityIq::setActivityDetailedNS(const QString& detailedns)
 {
     m_detailedns = detailedns;
 }
 
+/// Returns the text message, if there is any.
+///
 QString QXmppActivityIq::text() const
 {
     return m_text;
 }
 
+/// Sets the text message, if there is any.
+///
+/// \param text
 void QXmppActivityIq::setText(const QString& text)
 {
     m_text = text;
 }
 
+/// Returns the language of the text message (corresponding 'lang'
+/// attribute).
+///
 QString QXmppActivityIq::lang() const
 {
     return m_lang;
 }
 
+/// Sets the language of the text message (corresponding 'lang'
+/// attribute).
+///
+/// \param lang
 void QXmppActivityIq::setLang(const QString& lang)
 {
     m_lang = lang;
 }
 
+/// Returns true if the Activity element is empty therefore it would stop
+/// activity data provisioning.
+///
 bool QXmppActivityIq::isStop() const
 {
     return m_bstop;
 }
 
+/// Returns true if there is some additional specific activity involved.
+///
 bool QXmppActivityIq::isAdditionalSpecific() const
 {
     return m_bspecadd;
 }
 
+/// Returns true if there is some detailed specific activity involved.
+///
 bool QXmppActivityIq::isDetailed() const
 {
     return m_bdetailed;
 }
 
+/// Returns true if the Activity element is properly namespaced.
+///
 bool QXmppActivityIq::isActivityIq(const QDomElement &element)
 {
     return (element.namespaceURI() == ns_activity);
