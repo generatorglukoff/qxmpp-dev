@@ -24,6 +24,8 @@
 #include <QDomElement>
 #include <QFileInfo>
 #include <QPluginLoader>
+#include <QSslCertificate>
+#include <QSslKey>
 #include <QSslSocket>
 
 #include "QXmppConstants.h"
@@ -49,7 +51,10 @@ Q_IMPORT_PLUGIN(mod_version)
 class QXmppServerPrivate
 {
 public:
-    QXmppServerPrivate();
+    QXmppServerPrivate(QXmppServer *qq);
+    QXmppOutgoingServer *connectToDomain(const QString &domain);
+    QList<QXmppStream*> getStreams(const QString &to);
+    void handleStanza(QXmppStream *stream, const QDomElement &element);
     void loadExtensions(QXmppServer *server);
     QStringList presenceSubscribers(const QString &jid);
     QStringList presenceSubscriptions(const QString &jid);
@@ -79,14 +84,191 @@ public:
 private:
     bool loaded;
     bool started;
+    QXmppServer *q;
 };
 
-QXmppServerPrivate::QXmppServerPrivate()
+QXmppServerPrivate::QXmppServerPrivate(QXmppServer *qq)
     : logger(0),
     passwordChecker(0),
     loaded(false),
-    started(false)
+    started(false),
+    q(qq)
 {
+}
+
+/// Returns a new outgoing server-to-server connection to the given domain.
+///
+/// \param toDomain
+
+QXmppOutgoingServer* QXmppServerPrivate::connectToDomain(const QString &toDomain)
+{
+    bool check;
+
+    // initialise outgoing server-to-server
+    QXmppOutgoingServer *stream = new QXmppOutgoingServer(domain, q);
+    stream->setLocalStreamKey(generateStanzaHash().toAscii());
+
+    check = QObject::connect(stream, SIGNAL(connected()),
+                             q, SLOT(slotStreamConnected()));
+    Q_ASSERT(check);
+
+    check = QObject::connect(stream, SIGNAL(disconnected()),
+                             q, SLOT(slotStreamDisconnected()));
+    Q_UNUSED(check);
+
+    // add stream
+    outgoingServers.append(stream);
+    emit q->streamAdded(stream);
+
+    // connect to remote server
+    stream->connectToHost(toDomain);
+    return stream;
+}
+
+/// Returns the XMPP streams for the given recipient.
+///
+/// \param to
+///
+
+QList<QXmppStream*> QXmppServerPrivate::getStreams(const QString &to)
+{
+    QList<QXmppStream*> found;
+    if (to.isEmpty())
+        return found;
+    const QString toDomain = jidToDomain(to);
+    if (toDomain == domain) {
+        // look for a client connection
+        foreach (QXmppIncomingClient *conn, incomingClients) {
+            if (conn->jid() == to || jidToBareJid(conn->jid()) == to)
+                found << conn;
+        }
+    } else if (toDomain.endsWith("." + domain)) {
+        // refuse to route packets to sub-domains
+        return found;
+    } else {
+        // look for an outgoing S2S connection
+        foreach (QXmppOutgoingServer *conn, outgoingServers) {
+            if (conn->remoteDomain() == toDomain) {
+                found << conn;
+                break;
+            }
+        }
+
+        // if we did not find an outgoing server,
+        // we need to establish the S2S connection
+        if (found.isEmpty() && serverForServers->isListening())
+            found << connectToDomain(toDomain);
+    }
+    return found;
+}
+
+/// Handles an incoming XML element.
+///
+/// \param stream
+/// \param element
+
+void QXmppServerPrivate::handleStanza(QXmppStream *stream, const QDomElement &element)
+{
+    // try extensions
+    foreach (QXmppServerExtension *extension, extensions)
+        if (extension->handleStanza(stream, element))
+            return;
+
+    // default handlers
+    const QString to = element.attribute("to");
+    if (to == domain) {
+        if (element.tagName() == "presence") {
+            // presence to the local domain, broadcast it to subscribers
+            if (element.attribute("type").isEmpty() || element.attribute("type") == "unavailable") {
+                const QString from = element.attribute("from");
+                const QString bareFrom = jidToBareJid(from);
+                bool isInitial = false;
+
+                // record the presence for future use
+                QXmppPresence presence;
+                presence.parse(element);
+                if (presence.type() == QXmppPresence::Available) {
+                    isInitial = !presences.value(bareFrom).contains(from);
+                    presences[bareFrom][from] = presence;
+                } else {
+                    presences[bareFrom].remove(from);
+                }
+
+                // broadcast it to subscribers
+                foreach (const QString &subscriber, presenceSubscribers(from)) {
+                    // avoid loop
+                    if (subscriber == to)
+                        continue;
+                    QDomElement changed(element);
+                    changed.setAttribute("to", subscriber);
+                    handleStanza(stream, changed);
+                }
+
+                // get presences from subscriptions
+                if (isInitial) {
+                    foreach (const QString &subscription, presenceSubscriptions(from)) {
+                        if (jidToDomain(subscription) != domain) {
+                            QXmppPresence probe;
+                            probe.setType(QXmppPresence::Probe);
+                            probe.setFrom(from);
+                            probe.setTo(subscription);
+                            q->sendPacket(probe);
+                        } else {
+                            QXmppPresence push;
+                            foreach (push, presences.value(subscription).values()) {
+                                push.setTo(from);
+                                q->sendPacket(push);
+                            }
+                        }
+                    }
+                }
+            }
+        } else if (element.tagName() == "iq") {
+            // we do not support the given IQ
+            QXmppIq request;
+            request.parse(element);
+
+            if (request.type() != QXmppIq::Error && request.type() != QXmppIq::Result) {
+                QXmppIq response(QXmppIq::Error);
+                response.setId(request.id());
+                response.setFrom(domain);
+                response.setTo(request.from());
+                QXmppStanza::Error error(QXmppStanza::Error::Cancel,
+                    QXmppStanza::Error::FeatureNotImplemented);
+                response.setError(error);
+                stream->sendPacket(response);
+            }
+        }
+
+    } else {
+
+        if (element.tagName() == "presence") {
+            // directed presence, update subscribers
+            QXmppPresence presence;
+            presence.parse(element);
+
+            const QString from = presence.from();
+            if (presence.type() == QXmppPresence::Available)
+                subscribers[from].insert(to);
+            else if (presence.type() == QXmppPresence::Unavailable)
+                subscribers[from].remove(to);
+        }
+
+        // route element or reply on behalf of missing peer
+        if (!q->sendElement(element) && element.tagName() == "iq") {
+            QXmppIq request;
+            request.parse(element);
+
+            QXmppIq response(QXmppIq::Error);
+            response.setId(request.id());
+            response.setFrom(request.to());
+            response.setTo(request.from());
+            QXmppStanza::Error error(QXmppStanza::Error::Cancel,
+                QXmppStanza::Error::ServiceUnavailable);
+            response.setError(error);
+            stream->sendPacket(response);
+        }
+    }
 }
 
 void QXmppServerPrivate::info(const QString &message)
@@ -186,9 +368,9 @@ void QXmppServerPrivate::stopExtensions()
 /// \param parent
 
 QXmppServer::QXmppServer(QObject *parent)
-    : QXmppLoggable(parent),
-    d(new QXmppServerPrivate)
+    : QXmppLoggable(parent)
 {
+    d = new QXmppServerPrivate(this);
     d->serverForClients = new QXmppSslServer(this);
     bool check = connect(d->serverForClients, SIGNAL(newConnection(QSslSocket*)),
                          this, SLOT(slotClientConnection(QSslSocket*)));
@@ -308,8 +490,9 @@ void QXmppServer::addCaCertificates(const QString &path)
 {
     if (!path.isEmpty() && !QFileInfo(path).isReadable())
         d->warning(QString("SSL CA certificates are not readable %1").arg(path));
-    d->serverForClients->addCaCertificates(path);
-    d->serverForServers->addCaCertificates(path);
+    QList<QSslCertificate> certificates = QSslCertificate::fromPath(path);
+    d->serverForClients->addCaCertificates(certificates);
+    d->serverForServers->addCaCertificates(certificates);
 }
 
 /// Sets the path for the local SSL certificate.
@@ -318,10 +501,14 @@ void QXmppServer::addCaCertificates(const QString &path)
 
 void QXmppServer::setLocalCertificate(const QString &path)
 {
-    if (!path.isEmpty() && !QFileInfo(path).isReadable())
+    QSslCertificate certificate;
+    QFile file(path);
+    if (!path.isEmpty() && file.open(QIODevice::ReadOnly | QIODevice::Text))
+        certificate = QSslCertificate(file.readAll());
+    else
         d->warning(QString("SSL certificate is not readable %1").arg(path));
-    d->serverForClients->setLocalCertificate(path);
-    d->serverForServers->setLocalCertificate(path);
+    d->serverForClients->setLocalCertificate(certificate);
+    d->serverForServers->setLocalCertificate(certificate);
 }
 
 /// Sets the path for the local SSL private key.
@@ -330,10 +517,14 @@ void QXmppServer::setLocalCertificate(const QString &path)
 
 void QXmppServer::setPrivateKey(const QString &path)
 {
-    if (!path.isEmpty() && !QFileInfo(path).isReadable())
+    QSslKey key;
+    QFile file(path);
+    if (!path.isEmpty() && file.open(QIODevice::ReadOnly))
+        key = QSslKey(file.readAll(), QSsl::Rsa);
+    else
         d->warning(QString("SSL key is not readable %1").arg(path));
-    d->serverForClients->setPrivateKey(path);
-    d->serverForServers->setPrivateKey(path);
+    d->serverForClients->setPrivateKey(key);
+    d->serverForServers->setPrivateKey(key);
 }
 
 /// Listen for incoming XMPP client connections.
@@ -395,189 +586,6 @@ bool QXmppServer::listenForServers(const QHostAddress &address, quint16 port)
     return true;
 }
 
-QXmppOutgoingServer* QXmppServer::connectToDomain(const QString &domain)
-{
-    // initialise outgoing server-to-server
-    QXmppOutgoingServer *stream = new QXmppOutgoingServer(d->domain, this);
-    stream->setLocalStreamKey(generateStanzaHash().toAscii());
-
-    bool check = connect(stream, SIGNAL(connected()),
-                         this, SLOT(slotStreamConnected()));
-    Q_ASSERT(check);
-
-    check = connect(stream, SIGNAL(disconnected()),
-                         this, SLOT(slotStreamDisconnected()));
-    Q_UNUSED(check);
-
-    // add stream
-    d->outgoingServers.append(stream);
-    emit streamAdded(stream);
-
-    // connect to remote server
-    stream->connectToHost(domain);
-    return stream;
-}
-
-/// Returns the XMPP streams for the given recipient.
-///
-/// \param to
-///
-
-QList<QXmppStream*> QXmppServer::getStreams(const QString &to)
-{
-    QList<QXmppStream*> found;
-    if (to.isEmpty())
-        return found;
-    const QString toDomain = jidToDomain(to);
-    if (toDomain == d->domain)
-    {
-        // look for a client connection
-        foreach (QXmppIncomingClient *conn, d->incomingClients)
-        {
-            if (conn->jid() == to || jidToBareJid(conn->jid()) == to)
-                found << conn;
-        }
-    } else if (toDomain.endsWith("." + d->domain)) {
-        // refuse to route packets to sub-domains
-        return found;
-    } else {
-        // look for an outgoing S2S connection
-        foreach (QXmppOutgoingServer *conn, d->outgoingServers)
-        {
-            if (conn->remoteDomain() == toDomain)
-            {
-                found << conn;
-                break;
-            }
-        }
-
-        // if we did not find an outgoing server,
-        // we need to establish the S2S connection
-        if (found.isEmpty() && d->serverForServers->isListening())
-            found << connectToDomain(toDomain);
-    }
-    return found;
-}
-
-/// Handles an incoming XML element.
-///
-/// \param stream
-/// \param element
-
-void QXmppServer::handleStanza(QXmppStream *stream, const QDomElement &element)
-{
-    // try extensions
-    foreach (QXmppServerExtension *extension, d->extensions)
-        if (extension->handleStanza(stream, element))
-            return;
-
-    // default handlers
-    const QString to = element.attribute("to");
-    if (to == d->domain)
-    {
-        if (element.tagName() == "presence")
-        {
-            // presence to the local domain, broadcast it to subscribers
-            if (element.attribute("type").isEmpty() || element.attribute("type") == "unavailable")
-            {
-                const QString from = element.attribute("from");
-                const QString bareFrom = jidToBareJid(from);
-                bool isInitial = false;
-
-                // record the presence for future use
-                QXmppPresence presence;
-                presence.parse(element);
-                if (presence.type() == QXmppPresence::Available) {
-                    isInitial = !d->presences.value(bareFrom).contains(from);
-                    d->presences[bareFrom][from] = presence;
-                } else {
-                    d->presences[bareFrom].remove(from);
-                }
-
-                // broadcast it to subscribers
-                foreach (const QString &subscriber, d->presenceSubscribers(from))
-                {
-                    // avoid loop
-                    if (subscriber == to)
-                        continue;
-                    QDomElement changed(element);
-                    changed.setAttribute("to", subscriber);
-                    handleStanza(stream, changed);
-                }
-
-                // get presences from subscriptions
-                if (isInitial) {
-                    foreach (const QString &subscription, d->presenceSubscriptions(from))
-                    {
-                        if (jidToDomain(subscription) != d->domain) {
-                            QXmppPresence probe;
-                            probe.setType(QXmppPresence::Probe);
-                            probe.setFrom(from);
-                            probe.setTo(subscription);
-                            sendPacket(probe);
-                        } else {
-                            QXmppPresence push;
-                            foreach (push, d->presences.value(subscription).values()) {
-                                push.setTo(from);
-                                sendPacket(push);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        else if (element.tagName() == "iq")
-        {
-            // we do not support the given IQ
-            QXmppIq request;
-            request.parse(element);
-
-            if (request.type() != QXmppIq::Error && request.type() != QXmppIq::Result)
-            {
-                QXmppIq response(QXmppIq::Error);
-                response.setId(request.id());
-                response.setFrom(domain());
-                response.setTo(request.from());
-                QXmppStanza::Error error(QXmppStanza::Error::Cancel,
-                    QXmppStanza::Error::FeatureNotImplemented);
-                response.setError(error);
-                stream->sendPacket(response);
-            }
-        }
-
-    } else {
-
-        if (element.tagName() == "presence")
-        {
-            // directed presence, update subscribers
-            QXmppPresence presence;
-            presence.parse(element);
-
-            const QString from = presence.from();
-            if (presence.type() == QXmppPresence::Available)
-                d->subscribers[from].insert(to);
-            else if (presence.type() == QXmppPresence::Unavailable)
-                d->subscribers[from].remove(to);
-        }
-
-        // route element or reply on behalf of missing peer
-        if (!sendElement(element) && element.tagName() == "iq")
-        {
-            QXmppIq request;
-            request.parse(element);
-
-            QXmppIq response(QXmppIq::Error);
-            response.setId(request.id());
-            response.setFrom(request.to());
-            response.setTo(request.from());
-            QXmppStanza::Error error(QXmppStanza::Error::Cancel,
-                QXmppStanza::Error::ServiceUnavailable);
-            response.setError(error);
-            stream->sendPacket(response);
-        }
-    }
-}
-
 /// Route an XMPP stanza.
 ///
 /// \param element
@@ -586,12 +594,10 @@ bool QXmppServer::sendElement(const QDomElement &element)
 {
     bool sent = false;
     const QString to = element.attribute("to");
-    foreach (QXmppStream *conn, getStreams(to))
-    {
-        if (conn->isConnected() && conn->sendElement(element))
+    foreach (QXmppStream *conn, d->getStreams(to)) {
+        if (conn->isConnected() && conn->sendElement(element)) {
             sent = true;
-        else
-        {
+        } else {
             // queue packet
             QByteArray data;
             QXmlStreamWriter xmlStream(&data);
@@ -611,12 +617,10 @@ bool QXmppServer::sendElement(const QDomElement &element)
 bool QXmppServer::sendPacket(const QXmppStanza &packet)
 {
     bool sent = false;
-    foreach (QXmppStream *conn, getStreams(packet.to()))
-    {
-        if (conn->isConnected() && conn->sendPacket(packet))
+    foreach (QXmppStream *conn, d->getStreams(packet.to())) {
+        if (conn->isConnected() && conn->sendPacket(packet)) {
             sent = true;
-        else
-        {
+        } else {
             // queue packet
             QByteArray data;
             QXmlStreamWriter xmlStream(&data);
@@ -699,7 +703,7 @@ void QXmppServer::slotElementReceived(const QDomElement &element)
     QXmppStream *incoming = qobject_cast<QXmppStream *>(sender());
     if (!incoming)
         return;
-    handleStanza(incoming, element);
+    d->handleStanza(incoming, element);
 }
 
 /// Handle a new incoming TCP connection from a server.
@@ -790,13 +794,13 @@ void QXmppServer::slotStreamDisconnected()
                 // the client had sent an initial available presence but did
                 // not sent an unavailable presence, synthesize it
                 presence.setAttribute("to", d->domain);
-                handleStanza(stream, presence);
+                d->handleStanza(stream, presence);
             } else {
                 // synthesize unavailable presence to directed presence receivers
                 const QSet<QString> recipients = d->subscribers.value(jid);
                 foreach (const QString &recipient, recipients) {
                     presence.setAttribute("to", recipient);
-                    handleStanza(stream, presence);
+                    d->handleStanza(stream, presence);
                 }
             }
         }
@@ -835,9 +839,9 @@ void QXmppServer::slotStreamDisconnected()
 class QXmppSslServerPrivate
 {
 public:
-    QString caCertificates;
-    QString localCertificate;
-    QString privateKey;
+    QList<QSslCertificate> caCertificates;
+    QSslCertificate localCertificate;
+    QSslKey privateKey;
 };
 
 /// Constructs a new SSL server instance.
@@ -862,7 +866,7 @@ void QXmppSslServer::incomingConnection(int socketDescriptor)
 {
     QSslSocket *socket = new QSslSocket;
     socket->setSocketDescriptor(socketDescriptor);
-    if (!d->localCertificate.isEmpty() && !d->privateKey.isEmpty())
+    if (!d->localCertificate.isNull() && !d->privateKey.isNull())
     {
         socket->setProtocol(QSsl::AnyProtocol);
         socket->addCaCertificates(d->caCertificates);
@@ -875,28 +879,28 @@ void QXmppSslServer::incomingConnection(int socketDescriptor)
 /// Adds the given certificates to the CA certificate database to be used
 /// for incoming connnections.
 ///
-/// \param caCertificates
+/// \param certificates
 
-void QXmppSslServer::addCaCertificates(const QString &caCertificates)
+void QXmppSslServer::addCaCertificates(const QList<QSslCertificate> &certificates)
 {
-    d->caCertificates = caCertificates;
+    d->caCertificates += certificates;
 }
 
 /// Sets the local certificate to be used for incoming connections.
 ///
-/// \param localCertificate
+/// \param certificate
 
-void QXmppSslServer::setLocalCertificate(const QString &localCertificate)
+void QXmppSslServer::setLocalCertificate(const QSslCertificate &certificate)
 {
-    d->localCertificate = localCertificate;
+    d->localCertificate = certificate;
 }
 
 /// Sets the local private key to be used for incoming connections.
 ///
-/// \param privateKey
+/// \param key
 
-void QXmppSslServer::setPrivateKey(const QString &privateKey)
+void QXmppSslServer::setPrivateKey(const QSslKey &key)
 {
-    d->privateKey = privateKey;
+    d->privateKey = key;
 }
 
