@@ -80,7 +80,9 @@ INSTALL_HEADERS = QXmppUtils.h \
     QXmppVCard.h \
     QXmppVersionIq.h \
     QXmppVersionManager.h \
-    QXmppActivityIq.h
+    QXmppActivityIq.h \
+	QXmppBookmarkManager.h \
+	QXmppBookmarkSet.h
 
 HEADERS += $$INSTALL_HEADERS
 HEADERS += QXmppSrvInfo_p.h
@@ -145,7 +147,9 @@ SOURCES += QXmppUtils.cpp \
     QXmppVCardIq.cpp \
     QXmppVersionIq.cpp \
     QXmppVersionManager.cpp \
-    QXmppActivityIq.cpp
+    QXmppActivityIq.cpp \
+	QXmppBookmarkManager.cpp \
+	QXmppBookmarkSet.cpp
 
 # Plugins
 DEFINES += QT_STATICPLUGIN
