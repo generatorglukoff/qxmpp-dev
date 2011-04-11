@@ -24,7 +24,7 @@
 #include <QDomElement>
 
 #include "QXmppConstants.h"
-#include "QXmppActivityIq.h"
+#include "QXmppActivityItem.h"
 
 /// String representations of general activities
 static const char* activity_general[] = {
@@ -112,9 +112,9 @@ static const char* activity_specific[] = {
     "other"
 };
 
-QXmppActivityIq::QXmppActivityIq() :
-    m_actgen(QXmppActivityIq::GeneralEmpty),
-    m_actspec(QXmppActivityIq::SpecificEmpty),
+QXmppActivityItem::QXmppActivityItem() :
+    m_actgen(QXmppActivityItem::GeneralEmpty),
+    m_actspec(QXmppActivityItem::SpecificEmpty),
     m_specadd(QString()),
     m_specaddns(QString()),
     m_detailed(QString()),
@@ -129,7 +129,7 @@ QXmppActivityIq::QXmppActivityIq() :
 
 /// Returns the general tag of the Activity item.
 ///
-QXmppActivityIq::General QXmppActivityIq::activityGeneral() const
+QXmppActivityItem::General QXmppActivityItem::activityGeneral() const
 {
     return m_actgen;
 }
@@ -137,14 +137,14 @@ QXmppActivityIq::General QXmppActivityIq::activityGeneral() const
 /// Sets the general tag of the Activity item.
 ///
 /// \param general
-void QXmppActivityIq::setActivityGeneral(QXmppActivityIq::General general)
+void QXmppActivityItem::setActivityGeneral(QXmppActivityItem::General general)
 {
     m_actgen = general;
 }
 
 /// Returns the specific tag of the Activity item.
 ///
-QXmppActivityIq::Specific QXmppActivityIq::activitySpecific() const
+QXmppActivityItem::Specific QXmppActivityItem::activitySpecific() const
 {
     return m_actspec;
 }
@@ -152,7 +152,7 @@ QXmppActivityIq::Specific QXmppActivityIq::activitySpecific() const
 /// Sets the specific tag of the Activity item.
 ///
 /// \param specific
-void QXmppActivityIq::setActivitySpecific(QXmppActivityIq::Specific specific)
+void QXmppActivityItem::setActivitySpecific(QXmppActivityItem::Specific specific)
 {
     m_actspec = specific;
 }
@@ -160,7 +160,7 @@ void QXmppActivityIq::setActivitySpecific(QXmppActivityIq::Specific specific)
 /// Returns the additional specific (not hardcoded by XEP) tag of the
 /// Activity item, if there is any.
 ///
-QString QXmppActivityIq::additionalSpecific() const
+QString QXmppActivityItem::additionalSpecific() const
 {
     return m_specadd;
 }
@@ -169,14 +169,14 @@ QString QXmppActivityIq::additionalSpecific() const
 /// Activity item.
 ///
 /// \param specific
-void QXmppActivityIq::setAdditionalSpecific(const QString& addspec)
+void QXmppActivityItem::setAdditionalSpecific(const QString& addspec)
 {
     m_specadd = addspec;
 }
 
 /// Returns the namespace of the additional specific tag.
 ///
-QString QXmppActivityIq::additionalSpecificNS() const
+QString QXmppActivityItem::additionalSpecificNS() const
 {
     return m_specaddns;
 }
@@ -184,14 +184,14 @@ QString QXmppActivityIq::additionalSpecificNS() const
 /// Sets the namespace of the additional specific tag.
 ///
 /// \param addspecns
-void QXmppActivityIq::setAdditionalSpecificNS(const QString& addspecns)
+void QXmppActivityItem::setAdditionalSpecificNS(const QString& addspecns)
 {
     m_specaddns = addspecns;
 }
 
 /// Returns the detailed activity tag if there is any.
 ///
-QString QXmppActivityIq::activityDetailed() const
+QString QXmppActivityItem::activityDetailed() const
 {
     return m_detailed;
 }
@@ -199,14 +199,14 @@ QString QXmppActivityIq::activityDetailed() const
 /// Sets the detailed activity tag.
 ///
 /// \param detailed
-void QXmppActivityIq::setActivityDetailed(const QString& detailed)
+void QXmppActivityItem::setActivityDetailed(const QString& detailed)
 {
     m_detailed = detailed;
 }
 
 /// Returns the detailed activity's namespace.
 ///
-QString QXmppActivityIq::activityDetailedNS() const
+QString QXmppActivityItem::activityDetailedNS() const
 {
     return m_detailedns;
 }
@@ -214,14 +214,14 @@ QString QXmppActivityIq::activityDetailedNS() const
 /// Sets the detailed activity's namespace.
 ///
 /// \param detailedns
-void QXmppActivityIq::setActivityDetailedNS(const QString& detailedns)
+void QXmppActivityItem::setActivityDetailedNS(const QString& detailedns)
 {
     m_detailedns = detailedns;
 }
 
 /// Returns the text message, if there is any.
 ///
-QString QXmppActivityIq::text() const
+QString QXmppActivityItem::text() const
 {
     return m_text;
 }
@@ -229,7 +229,7 @@ QString QXmppActivityIq::text() const
 /// Sets the text message, if there is any.
 ///
 /// \param text
-void QXmppActivityIq::setText(const QString& text)
+void QXmppActivityItem::setText(const QString& text)
 {
     m_text = text;
 }
@@ -237,7 +237,7 @@ void QXmppActivityIq::setText(const QString& text)
 /// Returns the language of the text message (corresponding 'lang'
 /// attribute).
 ///
-QString QXmppActivityIq::lang() const
+QString QXmppActivityItem::lang() const
 {
     return m_lang;
 }
@@ -246,7 +246,7 @@ QString QXmppActivityIq::lang() const
 /// attribute).
 ///
 /// \param lang
-void QXmppActivityIq::setLang(const QString& lang)
+void QXmppActivityItem::setLang(const QString& lang)
 {
     m_lang = lang;
 }
@@ -254,33 +254,33 @@ void QXmppActivityIq::setLang(const QString& lang)
 /// Returns true if the Activity element is empty therefore it would stop
 /// activity data provisioning.
 ///
-bool QXmppActivityIq::isStop() const
+bool QXmppActivityItem::isStop() const
 {
     return m_bstop;
 }
 
 /// Returns true if there is some additional specific activity involved.
 ///
-bool QXmppActivityIq::isAdditionalSpecific() const
+bool QXmppActivityItem::isAdditionalSpecific() const
 {
     return m_bspecadd;
 }
 
 /// Returns true if there is some detailed specific activity involved.
 ///
-bool QXmppActivityIq::isDetailed() const
+bool QXmppActivityItem::isDetailed() const
 {
     return m_bdetailed;
 }
 
 /// Returns true if the Activity element is properly namespaced.
 ///
-bool QXmppActivityIq::isActivityIq(const QDomElement &element)
+bool QXmppActivityItem::isActivityItem(const QDomElement &element)
 {
     return (element.namespaceURI() == ns_activity);
 }
 
-void QXmppActivityIq::parse(const QDomElement &activity)
+void QXmppActivityItem::parse(const QDomElement &activity)
 {
     QXmppStanza::Error error(QXmppStanza::Error::Cancel, QXmppStanza::Error::BadRequest);
     if (activity.namespaceURI() == ns_activity)
@@ -350,7 +350,7 @@ void QXmppActivityIq::parse(const QDomElement &activity)
         setError(error);
 }
 
-void QXmppActivityIq::toXml(QXmlStreamWriter *writer) const
+void QXmppActivityItem::toXml(QXmlStreamWriter *writer) const
 {
     if (m_actgen < GeneralEmpty || m_actgen > Working)
         return;

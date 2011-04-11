@@ -21,17 +21,17 @@
  *
  */
 
-#ifndef QXMPPACTIVITYIQ_H
-#define QXMPPACTIVITYIQ_H
+#ifndef QXMPPACTIVITYITEM_H
+#define QXMPPACTIVITYITEM_H
 
 #include "QXmppIq.h"
 
-/// \brief The QXmppActivityIq class represents an IQ used for representing
+/// \brief The QXmppActivityItem class represents an IQ used for representing
 /// UserActivity as defined by XEP-0108.
 ///
 /// \ingroup Stanzas
 
-class QXmppActivityIq : public QXmppIq
+class QXmppActivityItem : public QXmppIq
 {
 public:
     /// This enum is used to describe a general activity  type.
@@ -121,12 +121,12 @@ public:
         Other // any other activity (without further specification) not defined herein
     };
 
-    QXmppActivityIq();
+    QXmppActivityItem();
 
-    QXmppActivityIq::General activityGeneral() const;
+    QXmppActivityItem::General activityGeneral() const;
     void setActivityGeneral(General general);
 
-    QXmppActivityIq::Specific activitySpecific() const;
+    QXmppActivityItem::Specific activitySpecific() const;
     void setActivitySpecific(Specific specific);
 
     QString additionalSpecific() const;
@@ -152,7 +152,7 @@ public:
     bool isAdditionalSpecific() const;
     bool isDetailed() const;
 
-    static bool isActivityIq(const QDomElement &element);
+    static bool isActivityItem(const QDomElement &element);
 
     void parse(const QDomElement &activity);
     void toXml(QXmlStreamWriter *writer) const;
