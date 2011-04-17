@@ -52,7 +52,7 @@
 #include "QXmppVersionIq.h"
 #include "QXmppGlobal.h"
 #include "QXmppEntityTimeIq.h"
-#include "QXmppActivityIq.h"
+#include "QXmppActivityItem.h"
 #include "tests.h"
 
 QString getImageType(const QByteArray &contents);
@@ -1360,16 +1360,16 @@ void TestUserActivity::testCommon()
         "<text xml:lang=\"en\">My nurse's birthday!</text>"
         "</activity>");
 
-    QXmppActivityIq iq;
-    parsePacket(iq, xml);
+    QXmppActivityItem item;
+    parsePacket(item, xml);
 
-    QCOMPARE(iq.isStop(), false);
-    QCOMPARE(iq.activityGeneral(), QXmppActivityIq::Relaxing);
-    QCOMPARE(iq.activitySpecific(), QXmppActivityIq::Partying);
-    QCOMPARE(iq.text(), QString("My nurse's birthday!"));
-    QCOMPARE(iq.lang(), QString("en"));
+    QCOMPARE(item.isStop(), false);
+    QCOMPARE(item.activityGeneral(), QXmppActivityItem::Relaxing);
+    QCOMPARE(item.activitySpecific(), QXmppActivityItem::Partying);
+    QCOMPARE(item.text(), QString("My nurse's birthday!"));
+    QCOMPARE(item.lang(), QString("en"));
 
-    serializePacket(iq, xml);
+    serializePacket(item, xml);
 }
 
 void TestUserActivity::testSpecificNamespaced()
@@ -1381,17 +1381,17 @@ void TestUserActivity::testSpecificNamespaced()
         "</relaxing>"
         "</activity>");
 
-    QXmppActivityIq iq;
-    parsePacket(iq, xml);
+    QXmppActivityItem item;
+    parsePacket(item, xml);
 
-    QCOMPARE(iq.isStop(), false);
-    QCOMPARE(iq.isAdditionalSpecific(), true);
-    QCOMPARE(iq.activityGeneral(), QXmppActivityIq::Relaxing);
-    QCOMPARE(iq.activitySpecific(), QXmppActivityIq::SpecificEmpty);
-    QCOMPARE(iq.additionalSpecific(), QString("tanning"));
-    QCOMPARE(iq.additionalSpecificNS(), QString("http://www.ilovetanning.info"));
+    QCOMPARE(item.isStop(), false);
+    QCOMPARE(item.isAdditionalSpecific(), true);
+    QCOMPARE(item.activityGeneral(), QXmppActivityItem::Relaxing);
+    QCOMPARE(item.activitySpecific(), QXmppActivityItem::SpecificEmpty);
+    QCOMPARE(item.additionalSpecific(), QString("tanning"));
+    QCOMPARE(item.additionalSpecificNS(), QString("http://www.ilovetanning.info"));
 
-    serializePacket(iq, xml);
+    serializePacket(item, xml);
 }
 
 void TestUserActivity::testDetailed()
@@ -1405,18 +1405,18 @@ void TestUserActivity::testDetailed()
         "</inactive>"
         "</activity>");
 
-    QXmppActivityIq iq;
-    parsePacket(iq, xml);
+    QXmppActivityItem item;
+    parsePacket(item, xml);
 
-    QCOMPARE(iq.isStop(), false);
-    QCOMPARE(iq.isAdditionalSpecific(), false);
-    QCOMPARE(iq.isDetailed(), true);
-    QCOMPARE(iq.activityGeneral(), QXmppActivityIq::Inactive);
-    QCOMPARE(iq.activitySpecific(), QXmppActivityIq::Sleeping);
-    QCOMPARE(iq.activityDetailed(), QString("hibernating"));
-    QCOMPARE(iq.activityDetailedNS(), QString("http://www.ursus.info/states"));
+    QCOMPARE(item.isStop(), false);
+    QCOMPARE(item.isAdditionalSpecific(), false);
+    QCOMPARE(item.isDetailed(), true);
+    QCOMPARE(item.activityGeneral(), QXmppActivityItem::Inactive);
+    QCOMPARE(item.activitySpecific(), QXmppActivityItem::Sleeping);
+    QCOMPARE(item.activityDetailed(), QString("hibernating"));
+    QCOMPARE(item.activityDetailedNS(), QString("http://www.ursus.info/states"));
 
-    serializePacket(iq, xml);
+    serializePacket(item, xml);
 }
 
 void TestUserActivity::testStopActivity()
@@ -1424,12 +1424,12 @@ void TestUserActivity::testStopActivity()
     const QByteArray xml(
         "<activity xmlns=\"http://jabber.org/protocol/activity\"/>");
 
-    QXmppActivityIq iq;
-    parsePacket(iq, xml);
+    QXmppActivityItem item;
+    parsePacket(item, xml);
 
-    QCOMPARE(iq.isStop(), true);
+    QCOMPARE(item.isStop(), true);
 
-    serializePacket(iq, xml);
+    serializePacket(item, xml);
 }
 
 int main(int argc, char *argv[])
