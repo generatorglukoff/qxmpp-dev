@@ -67,6 +67,15 @@ private slots:
     void testEntityTimeResult();
 };
 
+class TestCodec : public QObject
+{
+    Q_OBJECT
+
+private slots:
+    void testTheoraDecoder();
+    void testTheoraEncoder();
+};
+
 class TestJingle : public QObject
 {
     Q_OBJECT
@@ -74,7 +83,8 @@ class TestJingle : public QObject
 private slots:
     void testSession();
     void testTerminate();
-    void testPayloadType();
+    void testAudioPayloadType();
+    void testVideoPayloadType();
     void testRinging();
 };
 
@@ -89,6 +99,14 @@ private slots:
     void testSubscribe();
     void testSubscription();
     void testSubscriptions();
+};
+
+class TestServer : public QObject
+{
+    Q_OBJECT
+
+private slots:
+    void testConnect();
 };
 
 class TestStun : public QObject

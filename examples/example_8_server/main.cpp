@@ -24,7 +24,7 @@
 #include <QtCore/QCoreApplication>
 
 #include "QXmppLogger.h"
-#include "QXmppIncomingClient.h"
+#include "QXmppPasswordChecker.h"
 #include "QXmppServer.h"
 
 #define USERNAME "qxmpp.test1"
@@ -32,24 +32,15 @@
 
 class passwordChecker : public QXmppPasswordChecker
 {
-    /// Checks that the given credentials are valid.
-    QXmppPasswordChecker::Error checkPassword(const QString &username, const QString &password)
-    {
-        if (username == USERNAME && password == PASSWORD)
-            return QXmppPasswordChecker::NoError;
-        else
-            return QXmppPasswordChecker::AuthorizationError;
-    };
-
     /// Retrieves the password for the given username.
-    bool getPassword(const QString &username, QString &password)
+    QXmppPasswordReply::Error getPassword(const QXmppPasswordRequest &request, QString &password)
     {
-        if (username == USERNAME)
+        if (request.username() == USERNAME)
         {
             password = PASSWORD;
-            return true;
+            return QXmppPasswordReply::NoError;
         } else {
-            return false;
+            return QXmppPasswordReply::AuthorizationError;
         }
     };
 

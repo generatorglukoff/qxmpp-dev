@@ -5,12 +5,16 @@ QT -= gui
 TEMPLATE = lib
 
 CONFIG += staticlib
-INCLUDEPATH += $$QXMPP_INCLUDE_DIR
+INCLUDEPATH += $$QXMPP_INCLUDE_DIR $$QXMPP_INTERNAL_INCLUDES
 LIBS += $$QXMPP_INTERNAL_LIBS
 
-# To enable support for the Speex codec, uncomment the following:
+# To enable support for the Speex audio codec, uncomment the following:
 # DEFINES += QXMPP_USE_SPEEX
 # LIBS += -lspeex
+
+# To enable support for the Theora video codec, uncomment the following:
+# DEFINES += QXMPP_USE_THEORA
+# LIBS += -ltheoradec -ltheoraenc
 
 # Target definition
 TARGET = $$QXMPP_LIBRARY_NAME
@@ -51,6 +55,7 @@ INSTALL_HEADERS = QXmppUtils.h \
     QXmppOutgoingClient.h \
     QXmppOutgoingServer.h \
     QXmppPacket.h \
+    QXmppPasswordChecker.h \
     QXmppPingIq.h \
     QXmppPresence.h \
     QXmppPubSubIq.h \
@@ -121,6 +126,7 @@ SOURCES += QXmppUtils.cpp \
     QXmppOutgoingClient.cpp \
     QXmppOutgoingServer.cpp \
     QXmppPacket.cpp \
+    QXmppPasswordChecker.cpp \
     QXmppPingIq.cpp \
     QXmppPresence.cpp \
     QXmppPubSubIq.cpp \
