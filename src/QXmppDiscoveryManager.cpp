@@ -125,8 +125,9 @@ QXmppDiscoveryIq QXmppDiscoveryManager::capabilities()
     QStringList features;
     features
         << ns_chat_states       // XEP-0085: Chat State Notifications
-        << ns_capabilities      // XEP-0115 : Entity Capabilities
-        << ns_ping;             // XEP-0199: XMPP Ping
+        << ns_capabilities      // XEP-0115: Entity Capabilities
+        << ns_ping              // XEP-0199: XMPP Ping
+        << ns_delayed_delivery; // XEP-0203: Delayed Delivery
 
     foreach(QXmppClientExtension* extension, client()->extensions())
     {
