@@ -24,16 +24,15 @@
 #ifndef QXMPPMUCMANAGER_H
 #define QXMPPMUCMANAGER_H
 
-#include <QMap>
-
 #include "QXmppClientExtension.h"
 #include "QXmppMucIq.h"
 #include "QXmppPresence.h"
 
 class QXmppDataForm;
 class QXmppMessage;
-class QXmppMucAdminIq;
-class QXmppMucOwnerIq;
+class QXmppMucManagerPrivate;
+class QXmppMucRoom;
+class QXmppMucRoomPrivate;
 
 /// \brief The QXmppMucManager class makes it possible to interact with
 /// multi-user chat rooms as defined by XEP-0045: Multi-User Chat.
@@ -46,6 +45,14 @@ class QXmppMucOwnerIq;
 /// client->addExtension(manager);
 /// \endcode
 ///
+/// You can then join a room as follows:
+///
+/// \code
+/// QXmppMucRoom *room = manager->addRoom("room@conference.example.com");
+/// room->setNickName("mynick");
+/// room->join();
+/// \endcode
+///
 /// \ingroup Managers
 
 class QXmppMucManager : public QXmppClientExtension
@@ -53,23 +60,10 @@ class QXmppMucManager : public QXmppClientExtension
     Q_OBJECT
 
 public:
-    bool joinRoom(const QString &roomJid, const QString &nickName, const QString &password = QString());
-    bool leaveRoom(const QString &roomJid);
+    QXmppMucManager();
+    ~QXmppMucManager();
 
-    bool requestRoomConfiguration(const QString &roomJid);
-    bool setRoomConfiguration(const QString &roomJid, const QXmppDataForm &form);
-
-    bool requestRoomPermissions(const QString &roomJid);
-
-    bool setRoomSubject(const QString &roomJid, const QString &subject);
-
-    bool sendInvitation(const QString &roomJid, const QString &jid, const QString &reason);
-    bool sendMessage(const QString &roomJid, const QString &text);
-
-    QMap<QString, QXmppPresence> roomParticipants(const QString& bareJid) const;
-
-    QXmppMucAdminIq::Item::Affiliation getAffiliation(const QString &roomJid, const QString &nick) const;
-    QXmppMucAdminIq::Item::Role getRole(const QString &roomJid, const QString &nick) const;
+    QXmppMucRoom *addRoom(const QString &roomJid);
     QString getRealJid(const QString &roomJid, const QString &nick) const;
 
     /// \cond
@@ -80,63 +74,123 @@ public:
 signals:
     /// This signal is emitted when an invitation to a chat room is received.
     void invitationReceived(const QString &roomJid, const QString &inviter, const QString &reason);
-
-    /// This signal is emitted when the configuration form for a chat room is received.
-    void roomConfigurationReceived(const QString &roomJid, const QXmppDataForm &configuration);
-
-    /// This signal is emitted when the permissions for a chat room are received.
-    void roomPermissionsReceived(const QString &roomJid, const QList<QXmppMucAdminIq::Item> &permissions);
-
-    /// This signal is emitted when a room participant's presence changed.
-    ///
-    /// \sa roomParticipants()
-    void roomParticipantChanged(const QString &roomJid, const QString &nickName);
-
-    /// This signal is emitted when a room participant changes his nickname.
-    ///
-    /// Please note that roomParticipantChanged() would be emitted nevertheless,
-    /// both to signal about the unavailability of the participant under oldNick
-    /// and about the availability under newNick. However, this signal would be
-    /// emitted before both of them, so you may keep track of nick changes and
-    /// react to roomParticipantChanged() accordingly.
-    void roomParticipantNickChanged(const QString &roomJid, const QString &oldNick, const QString &newNick);
-
-    /// This signal is emitted when a room participant's JID changes.
-    void roomParticipantJidChanged(const QString &roomJid, const QString &nick, const QString &newJid);
-
-    /// This signal is emitted when a room participant's permissions change.
-    ///
-    /// Please note that this also includes the events of kicking and banning,
-    /// in this case newRole or newAff change to NoRole and OutcastAffiliation
-    /// accordingly.
-    void roomParticipantPermsChanged(const QString &roomJid, const QString &nick,
-                                     QXmppMucAdminIq::Item::Affiliation newAff,
-                                     QXmppMucAdminIq::Item::Role newRole,
-                                     const QString &reason);
-
-    /// This signal is emitted when a room participant's presence changes.
-    ///
-    /// This signal is emitted after roomParticipantJidChanged(), if any, but before
-    /// roomParticipantPermsChanged() and roomParticipandChanged().
-    void roomPresenceChanged(const QString &roomJid, const QString &nick, const QXmppPresence &presence);
-
 protected:
     /// \cond
     void setClient(QXmppClient* client);
     /// \endcond
 
 private slots:
-    void messageReceived(const QXmppMessage &message);
-    void mucAdminIqReceived(const QXmppMucAdminIq &iq);
-    void mucOwnerIqReceived(const QXmppMucOwnerIq &iq);
-    void presenceReceived(const QXmppPresence &presence);
+    void _q_messageReceived(const QXmppMessage &message);
+    void _q_roomDestroyed(QObject *object);
 
 private:
-    QMap<QString, QString> m_nickNames;
-    QMap<QString, QMap<QString, QXmppPresence> > m_participants;
-    QMap<QString, QMap<QString, QXmppMucAdminIq::Item::Affiliation> > m_affiliations;
-    QMap<QString, QMap<QString, QXmppMucAdminIq::Item::Role> > m_roles;
-    QMap<QString, QMap<QString, QString> > m_realJids;
+    QXmppMucManagerPrivate *d;
 };
+
+/// \brief The QXmppMucRoom class represents a multi-user chat room
+/// as defined by XEP-0045: Multi-User Chat.
+///
+/// \sa QXmppMucManager
+
+class QXmppMucRoom : public QObject
+{
+    Q_OBJECT
+    Q_PROPERTY(QXmppMucRoom::Actions allowedActions READ allowedActions NOTIFY allowedActionsChanged)
+    Q_PROPERTY(QString jid READ jid)
+    Q_PROPERTY(QString nickName READ nickName WRITE setNickName)
+    Q_PROPERTY(QStringList participants READ participants)
+    Q_PROPERTY(QString password READ password WRITE setPassword)
+    Q_PROPERTY(QString subject READ subject WRITE setSubject NOTIFY subjectChanged)
+
+public:
+
+    /// This enum is used to describe chat room actions.
+    enum Action {
+        NoAction = 0,               ///< no action
+        SubjectAction = 1,          ///< change the room's subject
+        ConfigurationAction = 2,    ///< change the room's configuration
+        PermissionsAction = 4,      ///< change the room's permissions
+        KickAction = 8,             ///< kick users from the room
+    };
+    Q_DECLARE_FLAGS(Actions, Action)
+
+    ~QXmppMucRoom();
+
+    Actions allowedActions() const;
+    bool isJoined() const;
+    QString jid() const;
+
+    QString nickName() const;
+    void setNickName(const QString &nickName);
+
+    QXmppPresence participantPresence(const QString &jid) const;
+    QStringList participants() const;
+
+    QString password() const;
+    void setPassword(const QString &password);
+
+    QString subject() const;
+    void setSubject(const QString &subject);
+
+signals:
+    /// This signal is emitted when the allowed actions change.
+    void allowedActionsChanged(QXmppMucRoom::Actions actions) const;
+
+    /// This signal is emitted when the configuration form for the room is received.
+    void configurationReceived(const QXmppDataForm &configuration);
+
+    /// This signal is emitted when an error is encountered.
+    void error(const QXmppStanza::Error &error);
+
+    /// This signal is emitted once you have joined the room.
+    void joined();
+
+    /// This signal is emitted if you get kicked from the room.
+    void kicked(const QString &jid, const QString &reason);
+
+    /// This signal is emiited once you have left the room.
+    void left();
+
+    /// This signal is emitted when a message is received.
+    void messageReceived(const QXmppMessage &message);
+
+    /// This signal is emitted when a participant joins the room.
+    void participantAdded(const QString &jid);
+
+    /// This signal is emitted when a participant changes.
+    void participantChanged(const QString &jid);
+
+    /// This signal is emitted when a participant leaves the room.
+    void participantRemoved(const QString &jid);
+
+    /// This signal is emitted when the room's permissions are received.
+    void permissionsReceived(const QList<QXmppMucItem> &permissions);
+
+    /// This signal is emitted when the room's subject changes.
+    void subjectChanged(const QString &subject);
+
+public slots:
+    bool join();
+    bool kick(const QString &jid, const QString &reason);
+    bool leave(const QString &message = QString());
+    bool requestConfiguration();
+    bool requestPermissions();
+    bool setConfiguration(const QXmppDataForm &form);
+    bool setPermissions(const QList<QXmppMucItem> &permissions);
+    bool sendInvitation(const QString &jid, const QString &reason);
+    bool sendMessage(const QString &text);
+
+private slots:
+    void _q_disconnected();
+    void _q_messageReceived(const QXmppMessage &message);
+    void _q_presenceReceived(const QXmppPresence &presence);
+
+private:
+    QXmppMucRoom(QXmppClient *client, const QString &jid, QObject *parent);
+    QXmppMucRoomPrivate *d;
+    friend class QXmppMucManager;
+};
+
+Q_DECLARE_OPERATORS_FOR_FLAGS(QXmppMucRoom::Actions)
 
 #endif

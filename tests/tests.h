@@ -58,6 +58,7 @@ private slots:
     void testPresenceFull();
     void testPresenceWithVCardUpdate();
     void testPresenceWithCapability();
+    void testPresenceWithMuc();
     void testSession();
     void testStreamFeatures();
     void testVCard();
@@ -99,6 +100,16 @@ private slots:
     void testSubscribe();
     void testSubscription();
     void testSubscriptions();
+};
+
+class TestRtp : public QObject
+{
+    Q_OBJECT
+
+private slots:
+    void testBad();
+    void testSimple();
+    void testWithCsrc();
 };
 
 class TestServer : public QObject

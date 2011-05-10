@@ -244,22 +244,25 @@ void QXmppRosterManager::rosterIqReceived(const QXmppRosterIq& rosterIq)
 
             // store updated entries and notify changes
             const QList<QXmppRosterIq::Item> items = rosterIq.items();
-            for (int i = 0; i < items.count(); i++)
-            {
-                QString bareJid = items.at(i).bareJid();
-                // don't emit the rosterChanged() signal if the item is
-                // actually removed from the roster
-                if (items.at(i).subscriptionType() == QXmppRosterIq::Item::Remove)
-                {
-                    // emit the signal only if we had the item before - in
-                    // this case the remove() method would return a non-zero
-                    // value
-                    if (m_entries.remove(bareJid))
+            foreach (const QXmppRosterIq::Item &item, items) {
+                const QString bareJid = item.bareJid();
+                if (item.subscriptionType() == QXmppRosterIq::Item::Remove) {
+                    if (m_entries.remove(bareJid)) {
+                        // notify the user that the item was removed
                         emit itemRemoved(bareJid);
-                }
-                else
-                {
-                    m_entries[bareJid] = items.at(i);
+                    }
+                } else {
+                    const bool added = !m_entries.contains(bareJid);
+                    m_entries.insert(bareJid, item);
+                    if (added) {
+                        // notify the user that the item was added
+                        emit itemAdded(bareJid);
+                    } else {
+                        // notify the user that the item changed
+                        emit itemChanged(bareJid);
+                    }
+
+                    // FIXME: remove legacy signal
                     emit rosterChanged(bareJid);
                 }
             }

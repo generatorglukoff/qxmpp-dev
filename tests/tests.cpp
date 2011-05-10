@@ -504,6 +504,36 @@ void TestPackets::testPresenceWithCapability()
     serializePacket(presence, xml);
 }
 
+void TestPackets::testPresenceWithMuc()
+{
+    const QByteArray xml(
+        "<presence "
+            "to=\"pistol@shakespeare.lit/harfleur\" "
+            "from=\"harfleur@henryv.shakespeare.lit/pistol\" "
+            "type=\"unavailable\">"
+            "<x xmlns=\"http://jabber.org/protocol/muc#user\">"
+            "<item affiliation=\"none\" role=\"none\">"
+                "<actor jid=\"fluellen@shakespeare.lit\"/>"
+                "<reason>Avaunt, you cullion!</reason>"
+            "</item>"
+            "<status code=\"307\"/>"
+            "</x>"
+        "</presence>");
+
+    QXmppPresence presence;
+    parsePacket(presence, xml);
+    QCOMPARE(presence.to(), QLatin1String("pistol@shakespeare.lit/harfleur"));
+    QCOMPARE(presence.from(), QLatin1String("harfleur@henryv.shakespeare.lit/pistol"));
+    QCOMPARE(presence.type(), QXmppPresence::Unavailable);
+    QCOMPARE(presence.mucItem().actor(), QLatin1String("fluellen@shakespeare.lit"));
+    QCOMPARE(presence.mucItem().affiliation(), QXmppMucItem::NoAffiliation);
+    QCOMPARE(presence.mucItem().jid(), QString());
+    QCOMPARE(presence.mucItem().reason(), QLatin1String("Avaunt, you cullion!"));
+    QCOMPARE(presence.mucItem().role(), QXmppMucItem::NoRole);
+    QCOMPARE(presence.mucStatusCodes(), QList<int>() << 307);
+    serializePacket(presence, xml);
+}
+
 void TestPackets::testSession()
 {
     const QByteArray xml(
@@ -1023,6 +1053,53 @@ private:
     QString m_password;
 };
 
+void TestRtp::testBad()
+{
+    QXmppRtpPacket packet;
+
+    // too short
+    QCOMPARE(packet.decode(QByteArray()), false);
+    QCOMPARE(packet.decode(QByteArray("\x80\x00\x3e", 3)), false);
+    QCOMPARE(packet.decode(QByteArray("\x84\x00\x3e\xd2\x00\x00\x00\x90\x5f\xbd\x16\x9e", 12)), false);
+
+    // wrong RTP version
+    QCOMPARE(packet.decode(QByteArray("\x40\x00\x3e\xd2\x00\x00\x00\x90\x5f\xbd\x16\x9e", 12)), false);
+}
+
+void TestRtp::testSimple()
+{
+    QByteArray data("\x80\x00\x3e\xd2\x00\x00\x00\x90\x5f\xbd\x16\x9e\x12\x34\x56", 15);
+    QXmppRtpPacket packet;
+    QCOMPARE(packet.decode(data), true);
+    QCOMPARE(packet.version, quint8(2));
+    QCOMPARE(packet.marker, false);
+    QCOMPARE(packet.type, quint8(0));
+    QCOMPARE(packet.sequence, quint16(16082));
+    QCOMPARE(packet.stamp, quint32(144));
+    QCOMPARE(packet.ssrc, quint32(1606227614));
+    QCOMPARE(packet.csrc, QList<quint32>());
+    QCOMPARE(packet.payload, QByteArray("\x12\x34\x56", 3));
+    QCOMPARE(packet.encode(), data);
+}
+
+void TestRtp::testWithCsrc()
+{
+    QByteArray data("\x84\x00\x3e\xd2\x00\x00\x00\x90\x5f\xbd\x16\x9e\xab\xcd\xef\x01\xde\xad\xbe\xef\x12\x34\x56", 23);
+    QXmppRtpPacket packet;
+    QCOMPARE(packet.decode(data), true);
+    QCOMPARE(packet.version, quint8(2));
+    QCOMPARE(packet.marker, false);
+    QCOMPARE(packet.type, quint8(0));
+    QCOMPARE(packet.sequence, quint16(16082));
+    QCOMPARE(packet.stamp, quint32(144));
+    QCOMPARE(packet.ssrc, quint32(1606227614));
+    qDebug() << packet.csrc;
+    QCOMPARE(packet.csrc, QList<quint32>() << quint32(0xabcdef01) << quint32(0xdeadbeef));
+    QCOMPARE(packet.payload, QByteArray("\x12\x34\x56", 3));
+    QCOMPARE(packet.encode(), data);
+}
+
+
 void TestServer::testConnect()
 {
     const QString testDomain("localhost");
@@ -1453,6 +1530,9 @@ int main(int argc, char *argv[])
 
     TestPubSub testPubSub;
     errors += QTest::qExec(&testPubSub);
+
+    TestRtp testRtp;
+    errors += QTest::qExec(&testRtp);
 
     TestServer testServer;
     errors += QTest::qExec(&testServer);

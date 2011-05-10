@@ -65,6 +65,7 @@ public:
     bool sendAck(const QXmppJingleIq &iq);
     bool sendInvite();
     bool sendRequest(const QXmppJingleIq &iq);
+    void terminate(QXmppJingleIq::Reason::Type reasonType);
 
     QXmppCall::Direction direction;
     QString jid;
@@ -75,6 +76,7 @@ public:
     QXmppCall::State state;
 
     // Media streams
+    bool sendVideo;
     QList<Stream*> streams;
     QIODevice::OpenMode audioMode;
     QIODevice::OpenMode videoMode;
@@ -103,7 +105,8 @@ private:
 };
 
 QXmppCallPrivate::QXmppCallPrivate(QXmppCall *qq)
-    : state(QXmppCall::OfferState),
+    : state(QXmppCall::ConnectingState),
+    sendVideo(false),
     audioMode(QIODevice::NotOpen),
     videoMode(QIODevice::NotOpen),
     q(qq)
@@ -137,7 +140,7 @@ void QXmppCallPrivate::handleAck(const QXmppIq &ack)
 
             // handle termination
             if (request.action() == QXmppJingleIq::SessionTerminate)
-                q->terminate();
+                q->terminated();
             return;
         }
     }
@@ -186,21 +189,12 @@ void QXmppCallPrivate::handleRequest(const QXmppJingleIq &iq)
             !handleTransport(stream, iq.content())) {
 
             // terminate call
-            QXmppJingleIq iq;
-            iq.setTo(q->jid());
-            iq.setType(QXmppIq::Set);
-            iq.setAction(QXmppJingleIq::SessionTerminate);
-            iq.setSid(q->sid());
-            iq.reason().setType(QXmppJingleIq::Reason::FailedApplication);
-            sendRequest(iq);
-
-            q->terminate();
+            terminate(QXmppJingleIq::Reason::FailedApplication);
             return;
         }
 
         // check for call establishment
-        setState(QXmppCall::ConnectingState);
-        q->updateOpenMode();
+        setState(QXmppCall::ActiveState);
 
     } else if (iq.action() == QXmppJingleIq::SessionInfo) {
 
@@ -214,7 +208,7 @@ void QXmppCallPrivate::handleRequest(const QXmppJingleIq &iq)
 
         // terminate
         q->info(QString("Remote party %1 terminated call %2").arg(iq.from(), iq.sid()));
-        q->terminate();
+        q->terminated();
 
     } else if (iq.action() == QXmppJingleIq::ContentAccept) {
 
@@ -345,6 +339,10 @@ QXmppCallPrivate::Stream *QXmppCallPrivate::createStream(const QString &media)
         q, SLOT(updateOpenMode()));
     Q_ASSERT(check);
 
+    check = QObject::connect(q, SIGNAL(stateChanged(QXmppCall::State)),
+        q, SLOT(updateOpenMode()));
+    Q_ASSERT(check);
+
     check = QObject::connect(stream->connection, SIGNAL(disconnected()),
         q, SLOT(hangup()));
     Q_ASSERT(check);
@@ -420,7 +418,34 @@ void QXmppCallPrivate::setState(QXmppCall::State newState)
     {
         state = newState;
         emit q->stateChanged(state);
+
+        if (state == QXmppCall::ActiveState)
+            emit q->connected();
+        else if (state == QXmppCall::FinishedState)
+            emit q->finished();
     }
+}
+
+/// Request graceful call termination
+
+void QXmppCallPrivate::terminate(QXmppJingleIq::Reason::Type reasonType)
+{
+    if (state == QXmppCall::DisconnectingState ||
+        state == QXmppCall::FinishedState)
+        return;
+
+    // hangup call
+    QXmppJingleIq iq;
+    iq.setTo(jid);
+    iq.setType(QXmppIq::Set);
+    iq.setAction(QXmppJingleIq::SessionTerminate);
+    iq.setSid(sid);
+    iq.reason().setType(reasonType);
+    sendRequest(iq);
+    setState(QXmppCall::DisconnectingState);
+
+    // schedule forceful termination in 5s
+    QTimer::singleShot(5000, q, SLOT(terminated()));
 }
 
 QXmppCall::QXmppCall(const QString &jid, QXmppCall::Direction direction, QXmppCallManager *parent)
@@ -451,7 +476,7 @@ QXmppCall::~QXmppCall()
 
 void QXmppCall::accept()
 {
-    if (d->direction == IncomingDirection && d->state == OfferState)
+    if (d->direction == IncomingDirection && d->state == ConnectingState)
     {
         Q_ASSERT(d->streams.size() == 1);
         QXmppCallPrivate::Stream *stream = d->streams.first();
@@ -480,8 +505,7 @@ void QXmppCall::accept()
         d->sendRequest(iq);
 
         // check for call establishment
-        d->setState(QXmppCall::ConnectingState);
-        updateOpenMode();
+        d->setState(QXmppCall::ActiveState);
     }
 }
 
@@ -494,8 +518,10 @@ void QXmppCall::accept()
 QXmppRtpAudioChannel *QXmppCall::audioChannel() const
 {
     QXmppCallPrivate::Stream *stream = d->findStreamByMedia(AUDIO_MEDIA);
-    Q_ASSERT(stream);
-    return (QXmppRtpAudioChannel*)stream->channel;
+    if (stream)
+        return (QXmppRtpAudioChannel*)stream->channel;
+    else
+        return 0;
 }
 
 /// Returns the RTP channel for the video data.
@@ -504,30 +530,22 @@ QXmppRtpAudioChannel *QXmppCall::audioChannel() const
 QXmppRtpVideoChannel *QXmppCall::videoChannel() const
 {
     QXmppCallPrivate::Stream *stream = d->findStreamByMedia(VIDEO_MEDIA);
-    Q_ASSERT(stream);
-    return (QXmppRtpVideoChannel*)stream->channel;
+    if (stream)
+        return (QXmppRtpVideoChannel*)stream->channel;
+    else
+        return 0;
 }
 
-void QXmppCall::terminate()
+void QXmppCall::terminated()
 {
-    if (d->state == FinishedState)
-        return;
-
-    d->state = QXmppCall::FinishedState;
-
+    // close streams
     foreach (QXmppCallPrivate::Stream *stream, d->streams) {
         stream->channel->close();
         stream->connection->close();
     }
 
-    // emit signals later
-    QTimer::singleShot(0, this, SLOT(terminated()));
-}
-
-void QXmppCall::terminated()
-{
-    emit stateChanged(d->state);
-    emit finished();
+    // update state
+    d->setState(QXmppCall::FinishedState);
 }
 
 /// Returns the call's direction.
@@ -543,27 +561,7 @@ QXmppCall::Direction QXmppCall::direction() const
 
 void QXmppCall::hangup()
 {
-    if (d->state == QXmppCall::DisconnectingState ||
-        d->state == QXmppCall::FinishedState)
-        return;
-
-    // hangup up call
-    QXmppJingleIq iq;
-    iq.setTo(d->jid);
-    iq.setType(QXmppIq::Set);
-    iq.setAction(QXmppJingleIq::SessionTerminate);
-    iq.setSid(d->sid);
-    d->sendRequest(iq);
-
-    // close streams
-    foreach (QXmppCallPrivate::Stream *stream, d->streams) {
-        stream->channel->close();
-        stream->connection->close();
-    }
-
-    // schedule forceful termination in 5s
-    QTimer::singleShot(5000, this, SLOT(terminate()));
-    d->setState(QXmppCall::DisconnectingState);
+    d->terminate(QXmppJingleIq::Reason::None);
 }
 
 /// Sends a transport-info to inform the remote party of new local candidates.
@@ -587,7 +585,6 @@ void QXmppCall::localCandidatesChanged()
     iq.setTo(d->jid);
     iq.setType(QXmppIq::Set);
     iq.setAction(QXmppJingleIq::TransportInfo);
-    iq.setInitiator(d->ownJid);
     iq.setSid(d->sid);
 
     iq.content().setCreator(stream->creator);
@@ -612,23 +609,26 @@ QString QXmppCall::jid() const
 
 void QXmppCall::updateOpenMode()
 {
+    QXmppCallPrivate::Stream *stream;
+    QIODevice::OpenMode mode;
+
     // determine audio mode
-    QXmppCallPrivate::Stream *stream = d->findStreamByMedia(AUDIO_MEDIA);
-    if (stream &&
-        (stream->channel->openMode() & QIODevice::ReadWrite) &&
-        stream->connection->isConnected() &&
-        d->state == ConnectingState)
-    {
-        d->setState(ActiveState);
-        emit connected();
+    mode = QIODevice::NotOpen;
+    stream = d->findStreamByMedia(AUDIO_MEDIA);
+    if (d->state == QXmppCall::ActiveState && stream && stream->connection->isConnected())
+        mode = stream->channel->openMode() & QIODevice::ReadWrite;
+    if (mode != d->audioMode) {
+        d->audioMode = mode;
+        emit audioModeChanged(mode);
     }
-    
+
     // determine video mode
+    mode = QIODevice::NotOpen;
     stream = d->findStreamByMedia(VIDEO_MEDIA);
-    QIODevice::OpenMode mode = QIODevice::NotOpen;
-    if (stream) {
-        if (stream->connection->isConnected())
-            mode = stream->channel->openMode() & QIODevice::ReadWrite;
+    if (d->state == QXmppCall::ActiveState && stream && stream->connection->isConnected()) {
+        mode |= (stream->channel->openMode() & QIODevice::ReadOnly);
+        if (d->sendVideo)
+            mode |= (stream->channel->openMode() & QIODevice::WriteOnly);
     }
     if (mode != d->videoMode) {
         d->videoMode = mode;
@@ -655,13 +655,21 @@ QXmppCall::State QXmppCall::state() const
 
 void QXmppCall::startVideo()
 {
-    QXmppCallPrivate::Stream *stream = d->findStreamByMedia(VIDEO_MEDIA);
-    if (stream)
+    if (d->state != QXmppCall::ActiveState) {
+        warning("Cannot start video, call is not active");
         return;
+    }
+
+    d->sendVideo = true;
+    QXmppCallPrivate::Stream *stream = d->findStreamByMedia(VIDEO_MEDIA);
+    if (stream) {
+        updateOpenMode();
+        return;
+    }
 
     // create video stream
     stream = d->createStream(VIDEO_MEDIA);
-    stream->creator = QLatin1String("initiator");
+    stream->creator = (d->direction == QXmppCall::OutgoingDirection) ? QLatin1String("initiator") : QLatin1String("responder");
     stream->name = QLatin1String("webcam");
     d->streams << stream;
 
@@ -670,7 +678,6 @@ void QXmppCall::startVideo()
     iq.setTo(d->jid);
     iq.setType(QXmppIq::Set);
     iq.setAction(QXmppJingleIq::ContentAdd);
-    iq.setInitiator(d->ownJid);
     iq.setSid(d->sid);
     iq.content().setCreator(stream->creator);
     iq.content().setName(stream->name);
@@ -835,14 +842,8 @@ void QXmppCallManager::jingleIqReceived(const QXmppJingleIq &iq)
             !call->d->handleTransport(stream, iq.content())) {
 
             // terminate call
-            QXmppJingleIq iq;
-            iq.setTo(call->jid());
-            iq.setType(QXmppIq::Set);
-            iq.setAction(QXmppJingleIq::SessionTerminate);
-            iq.setSid(call->sid());
-            iq.reason().setType(QXmppJingleIq::Reason::FailedApplication);
-            call->d->sendRequest(iq);
-
+            call->d->terminate(QXmppJingleIq::Reason::FailedApplication);
+            call->terminated();
             delete call;
             return;
         }
