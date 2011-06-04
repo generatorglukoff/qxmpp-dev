@@ -586,8 +586,11 @@ void QXmppMucRoom::_q_presenceReceived(const QXmppPresence &presence)
         }
     }
     else if (presence.type() == QXmppPresence::Unavailable) {
-        if (d->participants.remove(jid)) {
+        if (d->participants.contains(jid)) {
+			d->participants.insert(jid, presence);
+
             emit participantRemoved(jid);
+			d->participants.remove(jid);
 
             // check whether this was our own presence
             if (jid == d->ownJid()) {

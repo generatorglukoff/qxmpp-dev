@@ -22,19 +22,16 @@
  *
  */
 
-#ifndef QXMPPROSTER_H
-#define QXMPPROSTER_H
+#ifndef QXMPPROSTERMANAGER_H
+#define QXMPPROSTERMANAGER_H
 
 #include <QObject>
 #include <QMap>
-#include <QSet>
 #include <QStringList>
 
 #include "QXmppClientExtension.h"
 #include "QXmppPresence.h"
 #include "QXmppRosterIq.h"
-
-class QXmppRosterIq;
 
 /// \brief The QXmppRosterManager class provides access to a connected client's roster.
 ///
@@ -72,16 +69,11 @@ public:
     bool isRosterReceived();
     QStringList getRosterBareJids() const;
     QXmppRosterIq::Item getRosterEntry(const QString& bareJid) const;
-    void removeRosterEntry(const QString &bareJid);
+
     void addRosterEntry(const QString &bareJid,
                         const QString &name = QString(),
                         const QString &message = QString(),
                         const QSet<QString> &groups = QSet<QString>());
-
-    void grantSubscription(const QString &bareJid, const QString &reason = QString());
-    void cancelSubscription(const QString &bareJid, const QString &reason = QString());
-    void subscribe(const QString &bareJid, const QString &reason = QString());
-    void unsubscribe(const QString &bareJid, const QString &reason = QString());
     
     QStringList getResources(const QString& bareJid) const;
     QMap<QString, QXmppPresence> getAllPresencesForBareJid(
@@ -93,11 +85,17 @@ public:
     bool handleStanza(const QDomElement &element);
     /// \endcond
 
-    // deprecated in release 0.2.0
+    // deprecated in release 0.4.0
     /// \cond
-    QMap<QString, QXmppRosterIq::Item> Q_DECL_DEPRECATED getRosterEntries() const;
-    QMap<QString, QMap<QString, QXmppPresence> > Q_DECL_DEPRECATED getAllPresences() const;
+    void Q_DECL_DEPRECATED removeRosterEntry(const QString &bareJid);
     /// \endcond
+
+public slots:
+    bool acceptSubscription(const QString &bareJid, const QString &reason = QString ());
+    bool refuseSubscription(const QString &bareJid, const QString &reason = QString ());
+    bool removeItem(const QString &bareJid);
+    bool subscribe(const QString &bareJid, const QString &reason = QString ());
+    bool unsubscribe(const QString &bareJid, const QString &reason = QString ());
 
 signals:
     /// This signal is emitted when the Roster IQ is received after a successful
@@ -113,6 +111,15 @@ signals:
     // deprecated in release 0.4.0
     void rosterChanged(const QString& bareJid);
     /// \endcond
+
+    /// This signal is emitted when a contact asks to subscribe to your presence.
+    ///
+    /// You can either accept the request by calling acceptSubscription() or refuse it
+    /// by calling refuseSubscription().
+    ///
+    /// \note If you set QXmppConfiguration::autoAcceptSubscriptions() to true, this
+    /// signal will not be emitted.
+    void subscriptionReceived(const QString& bareJid);
 
     /// This signal is emitted when the roster entry of a particular bareJid is
     /// added as a result of roster push.
