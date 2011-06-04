@@ -77,6 +77,18 @@ public:
     QString url() const;
     void setUrl(const QString&);
 
+    QString orgName() const;
+    void setOrgName(const QString&);
+
+    QString orgUnit() const;
+    void setOrgUnit(const QString&);
+
+    QString title() const;
+    void setTitle(const QString&);
+
+    QString role() const;
+    void setRole(const QString&);
+
     /// \cond
     static bool isVCard(const QDomElement &element);
 
@@ -102,6 +114,10 @@ private:
     QString m_middleName;
     QString m_nickName;
     QString m_url;
+    QString m_orgName;
+    QString m_orgUnit;
+    QString m_title;
+    QString m_role;
 
     // not as 64 base
     QByteArray m_photo;

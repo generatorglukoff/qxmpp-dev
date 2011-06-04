@@ -197,6 +197,62 @@ void QXmppVCardIq::setUrl(const QString& url)
     m_url = url;
 }
 
+/// Returns the name of the organization the user works in.
+
+QString QXmppVCardIq::orgName() const
+{
+    return m_orgName;
+}
+
+/// Sets the name of the organization the user works in.
+
+void QXmppVCardIq::setOrgName(const QString &orgName)
+{
+    m_orgName = orgName;
+}
+
+/// Returns the unit of the organization the user works in.
+
+QString QXmppVCardIq::orgUnit() const
+{
+    return m_orgUnit;
+}
+
+/// Sets the unit of the ogranization the user works in.
+
+void QXmppVCardIq::setOrgUnit(const QString &orgUnit)
+{
+    m_orgUnit = orgUnit;
+}
+
+/// Returns the title of the user's job.
+
+QString QXmppVCardIq::title() const
+{
+    return m_title;
+}
+
+/// Sets the title of the user's job.
+
+void QXmppVCardIq::setTitle(const QString &title)
+{
+    m_title = title;
+}
+
+/// Returns the role of the user in his organization.
+
+QString QXmppVCardIq::role() const
+{
+    return m_role;
+}
+
+/// Sets the role of the user in his organization.
+
+void QXmppVCardIq::setRole(const QString &role)
+{
+    m_role = role;
+}
+
 /// Returns the photo's binary contents.
 ///
 /// If you want to use the photo as a QImage you can use:
@@ -245,20 +301,32 @@ void QXmppVCardIq::parseElementFromChild(const QDomElement& nodeRecv)
     // vCard
     QDomElement cardElement = nodeRecv.firstChildElement("vCard");
     m_birthday = QDate::fromString(cardElement.firstChildElement("BDAY").text(), "yyyy-MM-dd");
+
     QDomElement emailElement = cardElement.firstChildElement("EMAIL");
     m_email = emailElement.firstChildElement("USERID").text();
+
     m_fullName = cardElement.firstChildElement("FN").text();
     m_nickName = cardElement.firstChildElement("NICKNAME").text();
+
     QDomElement nameElement = cardElement.firstChildElement("N");
     m_firstName = nameElement.firstChildElement("GIVEN").text();
     m_lastName = nameElement.firstChildElement("FAMILY").text();
     m_middleName = nameElement.firstChildElement("MIDDLE").text();
+
     m_url = cardElement.firstChildElement("URL").text();
+
     QDomElement photoElement = cardElement.firstChildElement("PHOTO");
     QByteArray base64data = photoElement.
                             firstChildElement("BINVAL").text().toAscii();
     m_photo = QByteArray::fromBase64(base64data);
     m_photoType = photoElement.firstChildElement("TYPE").text();
+
+    // organization stuff
+    QDomElement orgElement = cardElement.firstChildElement("ORG");
+    m_orgName = orgElement.firstChildElement("ORGNAME").text();
+    m_orgUnit = orgElement.firstChildElement("ORGUNIT").text();
+    m_title = cardElement.firstChildElement("TITLE").text();
+    m_role = cardElement.firstChildElement("ROLE").text();
 }
 
 void QXmppVCardIq::toXmlElementFromChild(QXmlStreamWriter *writer) const
@@ -304,6 +372,19 @@ void QXmppVCardIq::toXmlElementFromChild(QXmlStreamWriter *writer) const
         helperToXmlAddTextElement(writer, "BINVAL", m_photo.toBase64());
         writer->writeEndElement();
     }
+
+    if (!m_orgName.isEmpty() || !m_orgUnit.isEmpty())
+    {
+        writer->writeStartElement("ORG");
+        helperToXmlAddTextElement(writer, "ORGNAME", m_orgName);
+        helperToXmlAddTextElement(writer, "ORGUNIT", m_orgUnit);
+        writer->writeEndElement();
+    }
+
+    if (!m_title.isEmpty())
+        helperToXmlAddTextElement(writer, "TITLE", m_title);
+    if (!m_role.isEmpty())
+        helperToXmlAddTextElement(writer, "ROLE", m_role);
 
     writer->writeEndElement();
 }
