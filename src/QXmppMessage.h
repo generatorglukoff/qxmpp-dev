@@ -80,6 +80,9 @@ public:
     QXmppMessage::Type type() const;
     void setType(QXmppMessage::Type);
 
+    bool requestReceipt() const;
+    void setRequestReceipt(bool);
+
     /// \cond
     void parse(const QDomElement &element);
     void toXml(QXmlStreamWriter *writer) const;
@@ -104,6 +107,9 @@ private:
     QString m_body;
     QString m_subject;
     QString m_thread;
+
+    // Request message receipt as per XEP-0184.
+    bool m_requestReceipt;
 };
 
 #endif // QXMPPMESSAGE_H

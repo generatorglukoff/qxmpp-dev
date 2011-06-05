@@ -52,7 +52,8 @@ QXmppMessage::QXmppMessage(const QString& from, const QString& to, const
       m_stampType(QXmppMessage::DelayedDelivery),
       m_state(None),
       m_body(body),
-      m_thread(thread)
+      m_thread(thread),
+      m_requestReceipt(false)
 {
 }
 
@@ -113,6 +114,18 @@ QString QXmppMessage::getTypeStr() const
 void QXmppMessage::setType(QXmppMessage::Type type)
 {
     m_type = type;
+}
+
+bool QXmppMessage::requestReceipt() const
+{
+    return m_requestReceipt;
+}
+
+void QXmppMessage::setRequestReceipt(bool req)
+{
+    m_requestReceipt = req;
+    if (req && id().isEmpty())
+        generateAndSetNextId();
 }
 
 void QXmppMessage::setTypeFromStr(const QString& str)
@@ -198,6 +211,9 @@ void QXmppMessage::parse(const QDomElement &element)
     m_subject = element.firstChildElement("subject").text();
     m_thread = element.firstChildElement("thread").text();
 
+    // XEP-0184: Message Delivery Receipts
+    m_requestReceipt = element.firstChildElement("request").namespaceURI() == ns_message_receipts;
+
     // chat states
     for (int i = Active; i <= Paused; i++)
     {
@@ -255,6 +271,14 @@ void QXmppMessage::toXml(QXmlStreamWriter *xmlWriter) const
     if (!m_thread.isEmpty())
         helperToXmlAddTextElement(xmlWriter, "thread", m_thread);
     error().toXml(xmlWriter);
+
+    // message receipt
+    if (m_requestReceipt)
+    {
+        xmlWriter->writeStartElement("request");
+        xmlWriter->writeAttribute("xmlns", ns_message_receipts);
+        xmlWriter->writeEndElement();
+    }
 
     // chat states
     if (m_state > None && m_state <= Paused)
