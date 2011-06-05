@@ -83,6 +83,9 @@ public:
     bool requestReceipt() const;
     void setRequestReceipt(bool);
 
+    bool isAttention() const;
+    void setAttention(bool);
+
     /// \cond
     void parse(const QDomElement &element);
     void toXml(QXmlStreamWriter *writer) const;
@@ -110,6 +113,9 @@ private:
 
     // Request message receipt as per XEP-0184.
     bool m_requestReceipt;
+
+    // Attention message as per XEP-0224.
+    bool m_attention;
 };
 
 #endif // QXMPPMESSAGE_H

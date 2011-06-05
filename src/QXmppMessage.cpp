@@ -128,6 +128,16 @@ void QXmppMessage::setRequestReceipt(bool req)
         generateAndSetNextId();
 }
 
+bool QXmppMessage::isAttention() const
+{
+    return m_attention;
+}
+
+void QXmppMessage::setAttention(bool attention)
+{
+    m_attention = attention;
+}
+
 void QXmppMessage::setTypeFromStr(const QString& str)
 {
     if(str == "error")
@@ -214,6 +224,9 @@ void QXmppMessage::parse(const QDomElement &element)
     // XEP-0184: Message Delivery Receipts
     m_requestReceipt = element.firstChildElement("request").namespaceURI() == ns_message_receipts;
 
+    // XEP-0224: Attention
+    m_attention = element.firstChildElement("attention").namespaceURI() == ns_attention;
+
     // chat states
     for (int i = Active; i <= Paused; i++)
     {
@@ -277,6 +290,14 @@ void QXmppMessage::toXml(QXmlStreamWriter *xmlWriter) const
     {
         xmlWriter->writeStartElement("request");
         xmlWriter->writeAttribute("xmlns", ns_message_receipts);
+        xmlWriter->writeEndElement();
+    }
+
+    // attention
+    if (m_attention)
+    {
+        xmlWriter->writeStartElement("attention");
+        xmlWriter->writeAttribute("xmlns", ns_attention);
         xmlWriter->writeEndElement();
     }
 
