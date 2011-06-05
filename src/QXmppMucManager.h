@@ -64,7 +64,6 @@ public:
     ~QXmppMucManager();
 
     QXmppMucRoom *addRoom(const QString &roomJid);
-    QString getRealJid(const QString &roomJid, const QString &nick) const;
 
     /// \cond
     QStringList discoveryFeatures() const;
