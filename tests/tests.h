@@ -164,3 +164,12 @@ private slots:
     void testDetailed();
     void testStopActivity();
 };
+
+class TestDataForm : public QObject
+{
+    Q_OBJECT
+
+private slots:
+    void testSimple();
+    void testMedia();
+};

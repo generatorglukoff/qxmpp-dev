@@ -1509,6 +1509,67 @@ void TestUserActivity::testStopActivity()
     serializePacket(item, xml);
 }
 
+void TestDataForm::testSimple()
+{
+    const QByteArray xml(
+        "<x xmlns=\"jabber:x:data\" type=\"form\">"
+        "<title>Search</title>"
+        "<instructions>Fill out this form to search for information!</instructions>"
+        "<field type=\"text-single\" var=\"search_request\">"
+        "<value/>"
+        "<required/>"
+        "</field>"
+        "</x>");
+
+    QXmppDataForm form;
+    parsePacket(form, xml);
+
+    QCOMPARE(form.isNull(), false);
+    QCOMPARE(form.instructions(), QString("Fill out this form to search for information!"));
+    QCOMPARE(form.fields().size(), 1);
+    QCOMPARE(form.fields().at(0).type(), QXmppDataForm::Field::TextSingleField);
+    QCOMPARE(form.fields().at(0).isRequired(), true);
+    QCOMPARE(form.fields().at(0).key(), QString("search_request"));
+
+    serializePacket(form, xml);
+}
+
+void TestDataForm::testMedia()
+{
+    const QByteArray xml(
+        "<x xmlns=\"jabber:x:data\" type=\"form\">"
+        "<field type=\"text-single\" label=\"Enter the text you see\" var=\"ocr\">"
+        "<value/>"
+        "<media xmlns=\"urn:xmpp:media-element\" height=\"80\" width=\"290\">"
+        "<uri type=\"image/jpeg\">"
+        "http://www.victim.com/challenges/ocr.jpeg?F3A6292C"
+        "</uri>"
+        "<uri type=\"image/png\">"
+        "cid:sha1+f24030b8d91d233bac14777be5ab531ca3b9f102@bob.xmpp.org"
+        "</uri>"
+        "</media>"
+        "</field>"
+        "</x>");
+
+    QXmppDataForm form;
+    parsePacket(form, xml);
+
+    QCOMPARE(form.isNull(), false);
+    QCOMPARE(form.fields().size(), 1);
+    QCOMPARE(form.fields().at(0).type(), QXmppDataForm::Field::TextSingleField);
+    QCOMPARE(form.fields().at(0).isRequired(), false);
+    QCOMPARE(form.fields().at(0).media().uris().size(), 2);
+    QCOMPARE(form.fields().at(0).media().isNull(), false);
+    QCOMPARE(form.fields().at(0).media().height(), (unsigned int)80);
+    QCOMPARE(form.fields().at(0).media().width(), (unsigned int)290);
+    QCOMPARE(form.fields().at(0).media().uris().at(0).first, QString("image/jpeg"));
+    QCOMPARE(form.fields().at(0).media().uris().at(0).second, QString("http://www.victim.com/challenges/ocr.jpeg?F3A6292C"));
+    QCOMPARE(form.fields().at(0).media().uris().at(1).first, QString("image/png"));
+    QCOMPARE(form.fields().at(0).media().uris().at(1).second, QString("cid:sha1+f24030b8d91d233bac14777be5ab531ca3b9f102@bob.xmpp.org"));
+
+    serializePacket(form, xml);
+}
+
 int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
@@ -1545,6 +1606,9 @@ int main(int argc, char *argv[])
 
     TestUserActivity testUserActivity;
     errors += QTest::qExec(&testUserActivity);
+
+    TestDataForm testDataForm;
+    errors += QTest::qExec(&testDataForm);
 
     if (errors)
     {

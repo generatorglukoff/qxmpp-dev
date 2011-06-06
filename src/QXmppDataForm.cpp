@@ -48,6 +48,72 @@ static field_type field_types[] = {
     {static_cast<QXmppDataForm::Field::Type>(-1), NULL},
 };
 
+/// Constructs a QXmppDataForm::Media with the specified sizes.
+///
+/// \param height
+/// \param width
+
+QXmppDataForm::Media::Media(unsigned int height, unsigned int width)
+    : m_height(height),
+    m_width(width)
+{
+}
+
+/// Returns media's height.
+
+unsigned int QXmppDataForm::Media::height() const
+{
+    return m_height;
+}
+
+/// Sets media's height.
+///
+/// \param height
+
+void QXmppDataForm::Media::setHeight(unsigned int height)
+{
+    m_height = height;
+}
+
+/// Returns media's width.
+
+unsigned int QXmppDataForm::Media::width() const
+{
+    return m_width;
+}
+
+/// Sets media's width.
+///
+/// \param width
+
+void QXmppDataForm::Media::setWidth(unsigned int width)
+{
+    m_width = width;
+}
+
+/// Returns media's uris.
+
+QList< QPair< QString, QString > > QXmppDataForm::Media::uris() const
+{
+    return m_uris;
+}
+
+/// Sets media's uris.
+///
+/// \param uris
+
+void QXmppDataForm::Media::setUris(const QList< QPair< QString, QString > > &uris)
+{
+    m_uris = uris;
+}
+
+/// Returns true if no media tag present.
+
+bool QXmppDataForm::Media::isNull() const
+{
+    return m_uris.empty();
+}
+
 /// Constructs a QXmppDataForm::Field of the specified \a type.
 ///
 /// \param type
@@ -168,6 +234,22 @@ QVariant QXmppDataForm::Field::value() const
 void QXmppDataForm::Field::setValue(const QVariant &value)
 {
     m_value = value;
+}
+
+/// Returns the field's media.
+
+QXmppDataForm::Media QXmppDataForm::Field::media() const
+{
+    return m_media;
+}
+
+/// Sets the field's media.
+///
+/// \param media
+
+void QXmppDataForm::Field::setMedia(const QXmppDataForm::Media &media)
+{
+    m_media = media;
 }
 
 /// Constructs a QXmppDataForm of the specified \a type.
@@ -329,6 +411,26 @@ void QXmppDataForm::parse(const QDomElement &element)
             field.setValue(fieldElement.firstChildElement("value").text());
         }
 
+        /* field media */
+        QDomElement mediaElement = fieldElement.firstChildElement("media");
+        if (!mediaElement.isNull())
+        {
+            Media media;
+            media.setHeight(mediaElement.attribute("height", "0").toInt());
+            media.setWidth(mediaElement.attribute("width", "0").toInt());
+
+            QList<QPair<QString, QString> > uris;
+            QDomElement uriElement = mediaElement.firstChildElement("uri");
+            while (!uriElement.isNull())
+            {
+                uris.append(QPair<QString, QString>(uriElement.attribute("type"),
+                    uriElement.text()));
+                uriElement = uriElement.nextSiblingElement("uri");
+            }
+            media.setUris(uris);
+            field.setMedia(media);
+        }
+
         /* field options */
         if (type == QXmppDataForm::Field::ListMultiField ||
             type == QXmppDataForm::Field::ListSingleField)
@@ -418,6 +520,28 @@ void QXmppDataForm::toXml(QXmlStreamWriter *writer) const
         else
         {
             helperToXmlAddTextElement(writer, "value", field.value().toString());
+        }
+
+        /* field media */
+        Media media = field.media();
+        if (!media.isNull())
+        {
+            writer->writeStartElement("media");
+            helperToXmlAddAttribute(writer, "xmlns", ns_media);
+            if (media.height() != 0)
+                helperToXmlAddAttribute(writer, "height", QString::number(media.height()));
+            if (media.height() != 0)
+                helperToXmlAddAttribute(writer, "width", QString::number(media.width()));
+
+            QPair<QString, QString> uri;
+            foreach(uri, media.uris())
+            {
+                writer->writeStartElement("uri");
+                helperToXmlAddAttribute(writer, "type", uri.first);
+                writer->writeCharacters(uri.second);
+                writer->writeEndElement();
+            }
+            writer->writeEndElement();
         }
 
         /* field options */
