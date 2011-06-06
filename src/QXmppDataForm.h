@@ -29,15 +29,44 @@
 #include <QVariant>
 #include <QXmlStreamWriter>
 
+
 class QDomElement;
 
 /// \brief The QXmppDataForm class represents a data form as defined by
 /// XEP-0004: Data Forms.
+/// Also it supports XEP-0221: Data Forms Media Element.
 ///
 
 class QXmppDataForm
 {
 public:
+    /// \brief The QXmppDataForm::Media class represents a media field
+    /// as defined by XEP-0221: Data Forms Media Element.
+    ///
+
+    class Media
+    {
+    public:
+        Media(unsigned int height = 0, unsigned int width = 0);
+
+        QList<QPair<QString, QString> > uris() const;
+        void setUris(const QList<QPair<QString, QString> > &uris);
+
+        unsigned int height() const;
+        void setHeight(unsigned int height);
+
+        unsigned int width() const;
+        void setWidth(unsigned int width);
+
+        bool isNull() const;
+
+    private:
+        QList<QPair<QString, QString> > m_uris;
+        unsigned int m_height;
+        unsigned int m_width;
+    };
+
+
     /// \brief The QXmppDataForm::Field class represents a data form field
     /// as defined by XEP-0004: Data Forms.
     ///
@@ -83,6 +112,9 @@ public:
         QVariant value() const;
         void setValue(const QVariant &value);
 
+        Media media() const;
+        void setMedia(const Media &media);
+
     private:
         QString m_description;
         QString m_key;
@@ -91,6 +123,7 @@ public:
         bool m_required;
         QXmppDataForm::Field::Type m_type;
         QVariant m_value;
+        Media m_media;
     };
 
     /// This enum is used to describe a form's type.

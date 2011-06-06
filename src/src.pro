@@ -88,7 +88,9 @@ INSTALL_HEADERS = QXmppUtils.h \
 	QXmppBookmarkManager.h \
 	QXmppBookmarkSet.h \
     QXmppActivityItem.h \
-	QXmppDeliveryReceiptsManager.h
+	QXmppDeliveryReceiptsManager.h \
+    QXmppCaptchaManager.h \
+
 
 HEADERS += $$INSTALL_HEADERS
 HEADERS += QXmppSrvInfo_p.h
@@ -158,7 +160,9 @@ SOURCES += QXmppUtils.cpp \
 	QXmppBookmarkManager.cpp \
 	QXmppBookmarkSet.cpp \
     QXmppActivityItem.cpp \
-	QXmppDeliveryReceiptsManager.cpp
+	QXmppDeliveryReceiptsManager.cpp \
+    QXmppCaptchaManager.cpp \
+
 
 # Plugins
 DEFINES += QT_STATICPLUGIN
