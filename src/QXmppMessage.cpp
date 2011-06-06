@@ -53,7 +53,8 @@ QXmppMessage::QXmppMessage(const QString& from, const QString& to, const
       m_state(None),
       m_body(body),
       m_thread(thread),
-      m_requestReceipt(false)
+      m_requestReceipt(false),
+      m_attention(false)
 {
 }
 
