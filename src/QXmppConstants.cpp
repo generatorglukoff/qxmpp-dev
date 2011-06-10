@@ -76,3 +76,6 @@ const char *ns_entity_time = "urn:xmpp:time";
 const char *ns_activity = "http://jabber.org/protocol/activity";
 
 const char *ns_media = "urn:xmpp:media-element";
+
+const char *ns_private = "jabber:iq:private";
+const char *ns_rosternotes = "storage:rosternotes";

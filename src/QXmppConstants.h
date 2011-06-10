@@ -72,5 +72,7 @@ extern const char *ns_jingle_rtp_video;
 extern const char *ns_entity_time;
 extern const char *ns_activity;
 extern const char *ns_media;
+extern const char *ns_private;
+extern const char *ns_rosternotes;
 
 #endif // QXMPPCONSTANTS_H
