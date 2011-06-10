@@ -52,7 +52,7 @@ void QXmppDeliveryReceiptsManager::sendReceipt(const QString &jid, const QString
     QXmppElement elem;
     elem.setTagName("received");
     elem.setAttribute("xlmns", ns_message_receipts);
-    elem.setAttribute("id", id);;
+    elem.setAttribute("id", id);
 
     msg.setExtensions(QXmppElementList(elem));
 
