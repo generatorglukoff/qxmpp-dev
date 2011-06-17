@@ -54,4 +54,5 @@ bool QXmppAnnotationsManager::handleStanza(const QDomElement &element)
     QXmppAnnotationsIq iq;
     iq.parse(element);
     emit notesReceived(iq.items());
+	return true;
 }
