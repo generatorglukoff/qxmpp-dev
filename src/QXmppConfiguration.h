@@ -117,6 +117,9 @@ public:
     bool ignoreSslErrors() const;
     void setIgnoreSslErrors(bool);
 
+    bool ignoreAuth() const;
+    void setIgnoreAuth(bool);
+
     QXmppConfiguration::StreamSecurityMode streamSecurityMode() const;
     void setStreamSecurityMode(QXmppConfiguration::StreamSecurityMode mode);
 
@@ -187,6 +190,9 @@ private:
                                 ///< false would use NonSASL if available
     // default is true
     bool m_ignoreSslErrors;
+
+    // default is false
+    bool m_ignoreAuth;
 
     StreamSecurityMode m_streamSecurityMode;
     NonSASLAuthMechanism m_nonSASLAuthMechanism;

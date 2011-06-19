@@ -37,6 +37,7 @@ QXmppConfiguration::QXmppConfiguration() : m_port(5222),
                 m_autoReconnectionEnabled(true),
                 m_useSASLAuthentication(true),
                 m_ignoreSslErrors(true),
+                m_ignoreAuth(false),
                 m_streamSecurityMode(QXmppConfiguration::TLSEnabled),
                 m_nonSASLAuthMechanism(QXmppConfiguration::NonSASLDigest),
                 m_SASLAuthMechanism(QXmppConfiguration::SASLDigestMD5)
@@ -286,6 +287,20 @@ bool QXmppConfiguration::ignoreSslErrors() const
 void QXmppConfiguration::setIgnoreSslErrors(bool value)
 {
     m_ignoreSslErrors = value;
+}
+
+/// Returns whether authentication step isn't done.
+
+bool QXmppConfiguration::ignoreAuth() const
+{
+    return m_ignoreAuth;
+}
+
+/// Sets whether authentication step can be ignored.
+
+void QXmppConfiguration::setIgnoreAuth(bool ignore)
+{
+    m_ignoreAuth = ignore;
 }
 
 /// Returns the type of authentication system specified by the user.

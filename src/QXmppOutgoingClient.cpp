@@ -295,6 +295,13 @@ void QXmppOutgoingClient::handleStanza(const QDomElement &nodeRecv)
             }
         }
 
+        if (configuration().ignoreAuth())
+        {
+            d->sessionStarted = true;
+            emit connected();
+            return;
+        }
+
         // handle authentication
         const bool nonSaslAvailable = features.nonSaslAuthMode() != QXmppStreamFeatures::Disabled;
         const bool saslAvailable = !features.authMechanisms().isEmpty();
