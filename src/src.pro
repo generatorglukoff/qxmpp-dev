@@ -91,7 +91,9 @@ INSTALL_HEADERS = QXmppUtils.h \
 	QXmppDeliveryReceiptsManager.h \
     QXmppCaptchaManager.h \
 	QXmppAnnotationsManager.h \
-	QXmppAnnotationsIq.h
+	QXmppAnnotationsIq.h \
+    QXmppBobIq.h \
+    QXmppBobManager.h
 
 
 HEADERS += $$INSTALL_HEADERS
@@ -165,7 +167,9 @@ SOURCES += QXmppUtils.cpp \
 	QXmppDeliveryReceiptsManager.cpp \
     QXmppCaptchaManager.cpp \
 	QXmppAnnotationsManager.cpp \
-	QXmppAnnotationsIq.cpp
+	QXmppAnnotationsIq.cpp \
+    QXmppBobIq.cpp \
+    QXmppBobManager.cpp
 
 
 # Plugins

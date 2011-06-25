@@ -173,3 +173,13 @@ private slots:
     void testSimple();
     void testMedia();
 };
+
+class TestBob : public QObject
+{
+    Q_OBJECT
+    
+private slots:
+    void testIqRequest();
+    void testIqResponse();
+    
+};

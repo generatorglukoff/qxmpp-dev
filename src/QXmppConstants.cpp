@@ -79,3 +79,5 @@ const char *ns_media = "urn:xmpp:media-element";
 
 const char *ns_private = "jabber:iq:private";
 const char *ns_rosternotes = "storage:rosternotes";
+
+const char *ns_bob = "urn:xmpp:bob";

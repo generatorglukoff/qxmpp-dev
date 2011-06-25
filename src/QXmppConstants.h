@@ -74,5 +74,6 @@ extern const char *ns_activity;
 extern const char *ns_media;
 extern const char *ns_private;
 extern const char *ns_rosternotes;
+extern const char *ns_bob;
 
 #endif // QXMPPCONSTANTS_H

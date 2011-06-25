@@ -53,6 +53,7 @@
 #include "QXmppGlobal.h"
 #include "QXmppEntityTimeIq.h"
 #include "QXmppActivityItem.h"
+#include "QXmppBobIq.h"
 #include "tests.h"
 
 QString getImageType(const QByteArray &contents);
@@ -1570,6 +1571,64 @@ void TestDataForm::testMedia()
     serializePacket(form, xml);
 }
 
+void TestBob::testIqRequest()
+{
+    const QByteArray xml(
+        "<iq"
+        " id=\"get-data-1\""
+        " to=\"ladymacbeth@shakespeare.lit/castle\""
+        " from=\"doctor@shakespeare.lit/pda\""
+        " type=\"get\">"
+        "<data xmlns=\"urn:xmpp:bob\""
+        " cid=\"sha1+8f35fef110ffc5df08d579a50083ff9308fb6242@bob.xmpp.org\"/>"
+        "</iq>");
+    
+    QXmppBobIq bob;
+    parsePacket(bob, xml);
+    
+    QCOMPARE(bob.cid(), QString("sha1+8f35fef110ffc5df08d579a50083ff9308fb6242@bob.xmpp.org"));
+    QCOMPARE(bob.data().isEmpty(), true);
+    
+    serializePacket(bob, xml);
+}
+
+void TestBob::testIqResponse()
+{
+    const QByteArray xml(
+        "<iq"
+        " id=\"get-data-1\""
+        " to=\"doctor@shakespeare.lit/pda\""
+        " from=\"ladymacbeth@shakespeare.lit/castle\""
+        " type=\"result\">"
+        "<data xmlns=\"urn:xmpp:bob\""
+        " cid=\"sha1+8f35fef110ffc5df08d579a50083ff9308fb6242@bob.xmpp.org\""
+        " type=\"image/png\""
+        " max-age=\"86400\">"
+        "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAABGdBTUEAALGP"
+        "C/xhBQAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB9YGARc5KB0XV+IA"
+        "AAAddEVYdENvbW1lbnQAQ3JlYXRlZCB3aXRoIFRoZSBHSU1Q72QlbgAAAF1J"
+        "REFUGNO9zL0NglAAxPEfdLTs4BZM4DIO4C7OwQg2JoQ9LE1exdlYvBBeZ7jq"
+        "ch9//q1uH4TLzw4d6+ErXMMcXuHWxId3KOETnnXXV6MJpcq2MLaI97CER3N0"
+        "vr4MkhoXe0rZigAAAABJRU5ErkJggg=="
+        "</data>"
+        "</iq>");
+    
+    QXmppBobIq bob;
+    parsePacket(bob, xml);
+    
+    QCOMPARE(bob.cid(), QString("sha1+8f35fef110ffc5df08d579a50083ff9308fb6242@bob.xmpp.org"));
+    QCOMPARE(bob.data(), QByteArray::fromBase64(
+        "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAABGdBTUEAALGP"
+        "C/xhBQAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB9YGARc5KB0XV+IA"
+        "AAAddEVYdENvbW1lbnQAQ3JlYXRlZCB3aXRoIFRoZSBHSU1Q72QlbgAAAF1J"
+        "REFUGNO9zL0NglAAxPEfdLTs4BZM4DIO4C7OwQg2JoQ9LE1exdlYvBBeZ7jq"
+        "ch9//q1uH4TLzw4d6+ErXMMcXuHWxId3KOETnnXXV6MJpcq2MLaI97CER3N0"
+        "vr4MkhoXe0rZigAAAABJRU5ErkJggg=="));
+    
+    serializePacket(bob, xml);
+}
+
+
 int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
@@ -1610,6 +1669,9 @@ int main(int argc, char *argv[])
     TestDataForm testDataForm;
     errors += QTest::qExec(&testDataForm);
 
+    TestBob testBob;
+    errors += QTest::qExec(&testBob);
+    
     if (errors)
     {
         qWarning() << "Total failed tests:" << errors;
