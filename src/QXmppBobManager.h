@@ -50,7 +50,7 @@ public:
     
 signals:
     /// \brief This signal is emitted when a bob data received.
-    void bobReceived(const QXmppBobIq&);
+    void bobReceived(const QXmppBobIq &bobIq);
 
 private:
     QCache<QPair<QString, QString>, QByteArray> m_bobCache;
