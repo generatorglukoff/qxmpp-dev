@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2008-2011 The QXmpp developers
  *
- * Author:
+ * Authors:
  *  Andrey Batyiev
  *
  * Source:
@@ -21,24 +21,28 @@
  *
  */
 
-#ifndef QXMPPCAPTCHAMANAGER_H
-#define QXMPPCAPTCHAMANAGER_H
+#include "QXmppCaptchaIq.h"
+#include "QXmppConstants.h"
 
-#include "QXmppClientExtension.h"
-
-class QDomElement;
-class QXmppDataForm;
-
-class QXmppCaptchaManager : public QXmppClientExtension
+QXmppCaptchaIq::QXmppCaptchaIq(QXmppIq::Type type)
+    : QXmppIq(type)
 {
-    Q_OBJECT
+}
 
-public:
-    virtual bool handleStanza(const QDomElement &stanza);
-    QString sendResponse(const QString &to, const QXmppDataForm &form);
+QXmppDataForm QXmppCaptchaIq::dataForm() const
+{
+    return m_form;
+}
 
-signals:
-    void captchaFormReceived(const QString &from, const QXmppDataForm &form);
-};
+void QXmppCaptchaIq::setDataForm(const QXmppDataForm& dataForm)
+{
+    m_form = dataForm;
+}
 
-#endif // QXMPPCAPTCHAMANAGER_H
+void QXmppCaptchaIq::toXmlElementFromChild(QXmlStreamWriter* writer) const
+{
+    writer->writeStartElement("captcha");
+    writer->writeAttribute("xmlns", ns_captcha);
+    m_form.toXml(writer);
+    writer->writeEndElement();
+}

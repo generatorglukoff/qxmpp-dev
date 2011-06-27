@@ -81,3 +81,4 @@ const char *ns_private = "jabber:iq:private";
 const char *ns_rosternotes = "storage:rosternotes";
 
 const char *ns_bob = "urn:xmpp:bob";
+const char *ns_captcha = "urn:xmpp:captcha";

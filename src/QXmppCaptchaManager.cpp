@@ -25,6 +25,9 @@
 
 #include "QXmppCaptchaManager.h"
 #include "QXmppDataForm.h"
+#include "QXmppConstants.h"
+#include "QXmppCaptchaIq.h"
+#include "QXmppClient.h"
 
 bool QXmppCaptchaManager::handleStanza(const QDomElement& stanza)
 {
@@ -33,7 +36,7 @@ bool QXmppCaptchaManager::handleStanza(const QDomElement& stanza)
 
     QDomElement captchaStanza = stanza.firstChildElement("captcha");
 
-    if (captchaStanza.isNull())
+    if (captchaStanza.isNull() || captchaStanza.namespaceURI() != ns_captcha)
         return false;
 
     QDomElement dataFormStanza = captchaStanza.firstChildElement("x");
@@ -46,7 +49,18 @@ bool QXmppCaptchaManager::handleStanza(const QDomElement& stanza)
     if (dataForm.isNull())
         return false;
 
-    emit captchaFormReceived(dataForm);
+    emit captchaFormReceived(stanza.attribute("from"), dataForm);
     return true;
 }
 
+QString QXmppCaptchaManager::sendResponse(const QString& to, const QXmppDataForm& form)
+{
+    QXmppCaptchaIq request;
+    request.setType(QXmppIq::Set);
+    request.setTo(to);
+    request.setDataForm(form);
+    if(client()->sendPacket(request))
+        return request.id();
+    else
+        return QString();
+}
